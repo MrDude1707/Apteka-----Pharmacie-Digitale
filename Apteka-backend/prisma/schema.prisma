@@ -1,0 +1,182 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  PATIENT
+  PHARMACIEN
+  MEDECIN
+  ADMINISTRATEUR
+}
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  BLOCKED
+  REJECTED
+}
+
+enum OrdonnanceStatus {
+  PENDING
+  DELIVREE
+  RENEWAL_REQUESTED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile   Profile?
+  otps      OtpCode[]
+  medecinDisponible MedecinDisponible?
+
+  prescriptionsWritten  Ordonnance[] @relation("MedecinPrescriptions")
+  prescriptionsReceived Ordonnance[] @relation("PatientPrescriptions")
+  
+  messagesSent     Message[] @relation("SentMessages")
+  messagesReceived Message[] @relation("ReceivedMessages")
+  commandes        Commande[]
+}
+
+model Profile {
+  id          String        @id @default(uuid())
+  userId      String        @unique
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName   String
+  lastName    String
+  role        Role          @default(PATIENT)
+  status      AccountStatus @default(PENDING)
+  phone       String?
+  zone        String?
+
+  pharmacieId String?
+  pharmacie   Pharmacie?    @relation(fields: [pharmacieId], references: [id])
+
+  wantsMedecin    Boolean            @default(false)
+  medecinChoisiId String?
+  medecinChoisi   MedecinDisponible? @relation(fields: [medecinChoisiId], references: [id])
+
+  @@index([role, status])
+  @@index([zone])
+}
+
+model MedecinDisponible {
+  id         String    @id @default(uuid())
+  nom        String
+  specialite String?
+  photoUrl   String?
+  actif      Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  userId     String?   @unique
+  user       User?     @relation(fields: [userId], references: [id])
+
+  patients   Profile[]
+}
+
+model Pharmacie {
+  id        String    @id @default(uuid())
+  name      String
+  latitude  Float
+  longitude Float
+  phone     String?
+  zone      String?
+  createdAt DateTime  @default(now())
+
+  pharmacians Profile[]
+  stocks      Stock[]
+  commandes   Commande[]
+}
+
+model Medicament {
+  id                String   @id @default(uuid())
+  cis               String   @unique
+  nom               String
+  forme             String
+  presentation      String?
+  prix              Float?
+  tauxRemboursement String?
+  substanceActive   String?
+  categorie         String?
+  tags              String?
+  isPopular         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  stocks            Stock[]
+
+  @@index([nom])
+}
+
+model Stock {
+  id           String     @id @default(uuid())
+  pharmacieId  String
+  pharmacie    Pharmacie  @relation(fields: [pharmacieId], references: [id], onDelete: Cascade)
+  medicamentId String
+  medicament   Medicament @relation(fields: [medicamentId], references: [id], onDelete: Cascade)
+  quantite     Int        @default(0)
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([pharmacieId, medicamentId])
+}
+
+model Ordonnance {
+  id                    String           @id @default(uuid())
+  code                  String           @unique
+  medecinId             String
+  medecin               User             @relation("MedecinPrescriptions", fields: [medecinId], references: [id])
+  patientId             String
+  patient               User             @relation("PatientPrescriptions", fields: [patientId], references: [id])
+  status                OrdonnanceStatus @default(PENDING)
+  medicaments           Json
+  dateEmission          DateTime         @default(now())
+  dateDelivrance        DateTime?
+  pharmacieId           String?
+  
+  renouvellementDemande Boolean          @default(false)
+  parentOrdonnanceId    String?
+
+  @@index([medecinId])
+  @@index([patientId])
+  @@index([status])
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  type      String   @default("REGISTER")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  senderId   String
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  content    String
+  createdAt  DateTime @default(now())
+}
+
+model Commande {
+  id          String    @id @default(uuid())
+  patientId   String
+  patient     User      @relation(fields: [patientId], references: [id])
+  pharmacieId String
+  pharmacie   Pharmacie @relation(fields: [pharmacieId], references: [id])
+  total       Float
+  items       Json
+  status      String    @default("PAYEE")
+  createdAt   DateTime  @default(now())
+}

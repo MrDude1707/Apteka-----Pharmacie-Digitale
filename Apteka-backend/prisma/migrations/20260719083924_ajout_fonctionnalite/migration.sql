@@ -1,0 +1,5 @@
+-- AlterEnum
+ALTER TYPE "AccountStatus" ADD VALUE 'REJECTED';
+
+-- AlterTable
+ALTER TABLE "OtpCode" ADD COLUMN     "type" TEXT NOT NULL DEFAULT 'REGISTER';
