@@ -13,8 +13,8 @@ const prisma = require('./src/prisma');
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 
-const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? (process.env.APP_URL || '').split(',').map(o => o.trim()).filter(Boolean)
+const allowedOrigins = (process.env.APP_URL)
+  ? process.env.APP_URL.split(',').map(o => o.trim()).filter(Boolean)
   : true;
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
@@ -79,6 +79,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`=================================================`);
   console.log(`🚀 API BACKEND démarrée sur le port ${PORT}`);
   console.log(`🔗 Accès local : http://localhost:${PORT}/api/health`);
-  console.log(`🌐 CORS autorisé pour : ${process.env.NODE_ENV === 'production' ? (process.env.APP_URL || '(non défini !)') : 'toutes origines (dev)'}`);
+  console.log(`🌐 CORS autorisé pour : ${allowedOrigins === true ? 'toutes origines' : allowedOrigins.join(', ')}`);
   console.log(`=================================================`);
 });
