@@ -6,12 +6,17 @@ const prisma = require('../prisma');
 const JWT_SECRET = process.env.JWT_SECRET || "TANA_PHARMA_SECURE_JWT_KEY_L2_MEMOIRE_2026";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
+const smtpHost = process.env.SMTP_HOST || "smtp.resend.com";
+const smtpPort = parseInt(process.env.SMTP_PORT || "465");
+const isSecure = smtpPort === 465;
+
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "sandbox.smtp.mailtrap.io",
-  port: parseInt(process.env.SMTP_PORT || "2525"),
+  host: smtpHost,
+  port: smtpPort,
+  secure: isSecure,
   auth: {
-    user: process.env.SMTP_USER || "",
-    pass: process.env.SMTP_PASS || ""
+    user: process.env.SMTP_USER || "resend",
+    pass: process.env.SMTP_PASS || "re_C1JqJz8u_ESbcAGCfn6VhCySBhL1uWqRc"
   }
 });
 
@@ -89,15 +94,15 @@ async function register(req, res) {
       });
 
       const mailOptions = {
-        from: process.env.SMTP_FROM || '"Pharmacie Numérique Antananarivo" <noreply@pharmacie-antananarivo.mg>',
+        from: process.env.SMTP_FROM || '"Apteka" <onboarding@resend.dev>',
         to: email,
         subject: "Validation de votre compte - Code OTP",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-            <h2 style="color: #007aff; text-align: center;">Pharmacie Numérique d'Antananarivo</h2>
+            <h2 style="color: #007aff; text-align: center;">Apteka — Pharmacie d'Antananarivo</h2>
             <p>Bonjour <strong>${firstName} ${lastName}</strong>,</p>
             <p>Merci de vous être inscrit sur notre plateforme. Pour activer votre compte Patient, veuillez utiliser le code de validation OTP ci-dessous :</p>
-            <div style="font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 5px; color: #1d1d1f; margin: 30px 0; padding: 15px; background-color: #f5f5f7; border-radius: 6px;">
+            <div style="font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 5px; color: #10b981; margin: 30px 0; padding: 15px; background-color: #f5f5f7; border-radius: 6px;">
               ${otpCode}
             </div>
             <p style="font-size: 13px; color: #86868b; text-align: center;">Ce code est confidentiel et est valide pendant 15 minutes.</p>
@@ -105,11 +110,13 @@ async function register(req, res) {
         `
       };
 
-      if (process.env.SMTP_USER && process.env.SMTP_USER !== "MY_MAILTRAP_USER_ID") {
+      const hasSmtpConfig = process.env.SMTP_USER || transporter.options.auth.pass;
+      if (hasSmtpConfig) {
         try {
           await transporter.sendMail(mailOptions);
         } catch (mailError) {
           console.error("Erreur d'envoi d'email réel, code affiché dans les logs:", mailError.message);
+          console.log(`\n==========================================\n[DÉMO BACKUP LOG À ${email}] : Le code OTP est ${otpCode}\n==========================================\n`);
         }
       } else {
         console.log(`\n==========================================\n[DÉMO OTP ENVOYÉ À ${email}] : Le code OTP est ${otpCode}\n==========================================\n`);
@@ -324,12 +331,12 @@ async function approveProfessional(req, res) {
     const user = await prisma.user.findUnique({ where: { id: profile.userId } });
     if (user) {
       const mailOptions = {
-        from: process.env.SMTP_FROM || '"Pharmacie Numérique Antananarivo" <noreply@pharmacie-antananarivo.mg>',
+        from: process.env.SMTP_FROM || '"Apteka" <onboarding@resend.dev>',
         to: user.email,
         subject: "Votre compte a été approuvé !",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-            <h2 style="color: #007aff; text-align: center;">Pharmacie Numérique d'Antananarivo</h2>
+            <h2 style="color: #10b981; text-align: center;">Apteka — Pharmacie d'Antananarivo</h2>
             <p>Bonjour <strong>${profile.firstName} ${profile.lastName}</strong>,</p>
             <p>Votre compte ${profile.role === 'MEDECIN' ? 'Médecin' : 'Pharmacien'} a été vérifié et approuvé par notre équipe. Vous pouvez dès à présent vous connecter à la plateforme.</p>
           </div>
@@ -489,14 +496,14 @@ async function forgotPassword(req, res) {
     });
 
     const mailOptions = {
-      from: process.env.SMTP_FROM || '"Pharmacie Numérique Antananarivo" <noreply@pharmacie-antananarivo.mg>',
+      from: process.env.SMTP_FROM || '"Apteka" <onboarding@resend.dev>',
       to: email,
       subject: "Réinitialisation de votre mot de passe",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-          <h2 style="color: #007aff; text-align: center;">Pharmacie Numérique d'Antananarivo</h2>
+          <h2 style="color: #10b981; text-align: center;">Apteka — Pharmacie d'Antananarivo</h2>
           <p>Voici votre code de réinitialisation de mot de passe :</p>
-          <div style="font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 5px; color: #1d1d1f; margin: 30px 0; padding: 15px; background-color: #f5f5f7; border-radius: 6px;">
+          <div style="font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 5px; color: #10b981; margin: 30px 0; padding: 15px; background-color: #f5f5f7; border-radius: 6px;">
             ${otpCode}
           </div>
           <p style="font-size: 13px; color: #86868b; text-align: center;">Ce code est valide pendant 15 minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
@@ -504,11 +511,13 @@ async function forgotPassword(req, res) {
       `
     };
 
-    if (process.env.SMTP_USER && process.env.SMTP_USER !== "MY_MAILTRAP_USER_ID") {
+    const hasSmtpConfig = process.env.SMTP_USER || transporter.options.auth.pass;
+    if (hasSmtpConfig) {
       try {
         await transporter.sendMail(mailOptions);
       } catch (mailError) {
         console.error("Erreur d'envoi d'email de réinitialisation, code affiché dans les logs:", mailError.message);
+        console.log(`\n==========================================\n[DÉMO BACKUP LOG RESET PASSWORD À ${email}] : Le code est ${otpCode}\n==========================================\n`);
       }
     } else {
       console.log(`\n==========================================\n[DÉMO RESET PASSWORD À ${email}] : Le code est ${otpCode}\n==========================================\n`);
@@ -591,14 +600,14 @@ async function resendOtp(req, res) {
     });
 
     const mailOptions = {
-      from: process.env.SMTP_FROM || '"Pharmacie Numérique Antananarivo" <noreply@pharmacie-antananarivo.mg>',
+      from: process.env.SMTP_FROM || '"Apteka" <onboarding@resend.dev>',
       to: user.email,
       subject: "Nouveau code de validation OTP",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-          <h2 style="color: #007aff; text-align: center;">Pharmacie Numérique d'Antananarivo</h2>
+          <h2 style="color: #10b981; text-align: center;">Apteka — Pharmacie d'Antananarivo</h2>
           <p>Voici votre nouveau code de validation :</p>
-          <div style="font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 5px; color: #1d1d1f; margin: 30px 0; padding: 15px; background-color: #f5f5f7; border-radius: 6px;">
+          <div style="font-size: 32px; font-weight: bold; text-align: center; letter-spacing: 5px; color: #10b981; margin: 30px 0; padding: 15px; background-color: #f5f5f7; border-radius: 6px;">
             ${otpCode}
           </div>
           <p style="font-size: 13px; color: #86868b; text-align: center;">Ce code est valide pendant 15 minutes.</p>
@@ -606,11 +615,13 @@ async function resendOtp(req, res) {
       `
     };
 
-    if (process.env.SMTP_USER && process.env.SMTP_USER !== "MY_MAILTRAP_USER_ID") {
+    const hasSmtpConfig = process.env.SMTP_USER || transporter.options.auth.pass;
+    if (hasSmtpConfig) {
       try {
         await transporter.sendMail(mailOptions);
       } catch (mailError) {
         console.error("Erreur d'envoi d'email (non bloquant), code affiché dans les logs:", mailError.message);
+        console.log(`\n==========================================\n[DÉMO BACKUP LOG OTP RENVOYÉ À ${user.email}] : Le code est ${otpCode}\n==========================================\n`);
       }
     } else {
       console.log(`\n==========================================\n[DÉMO OTP RENVOYÉ À ${user.email}] : Le code est ${otpCode}\n==========================================\n`);
