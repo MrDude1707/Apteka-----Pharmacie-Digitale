@@ -136,7 +136,7 @@ async function getDoctorPrescriptions(req, res) {
       });
       populated.push({
         ...p,
-        patientName: patient ? `${patient.profile.firstName} ${patient.profile.lastName}` : "Patient Inconnu"
+        patientName: patient?.profile ? `${patient.profile.firstName} ${patient.profile.lastName}` : "Patient Inconnu"
       });
     }
 

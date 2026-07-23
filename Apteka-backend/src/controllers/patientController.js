@@ -48,12 +48,13 @@ async function getMyPrescriptions(req, res) {
       const medecin = await prisma.user.findUnique({ where: { id: p.medecinId }, include: { profile: true, medecinDisponible: true } });
       populated.push({ 
         ...p, 
-        medecinName: medecin ? `Dr. ${medecin.profile.firstName} ${medecin.profile.lastName}` : "Médecin Inconnu",
-        medecinSpec: medecin && medecin.medecinDisponible ? medecin.medecinDisponible.specialite : "Généraliste"
+        medecinName: medecin?.profile ? `Dr. ${medecin.profile.firstName} ${medecin.profile.lastName}` : "Médecin Inconnu",
+        medecinSpec: medecin?.medecinDisponible ? medecin.medecinDisponible.specialite : "Généraliste"
       });
     }
     return res.status(200).json(populated);
   } catch (error) {
+    console.error("Erreur dans getMyPrescriptions:", error);
     return res.status(500).json({ error: "Erreur lors de la récupération de vos ordonnances." });
   }
 }

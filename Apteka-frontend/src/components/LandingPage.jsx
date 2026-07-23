@@ -286,7 +286,12 @@ export default function LandingPage({ onLoginSuccess, handleQuickDemoLogin }) {
           style={{ y: videoY, scale: videoScale, opacity: videoOpacity }}
           className="absolute inset-0 z-0 bg-teal-950 pointer-events-none"
         >
-          <video className="w-full h-full object-cover" src="/videos/hero-background.mp4" autoPlay loop muted playsInline />
+          <video className="w-full h-full object-cover hidden md:block" src="/videos/hero-background.mp4" autoPlay loop muted playsInline preload="auto" />
+          {/* Modern animated ambient glow for mobile in place of video */}
+          <div className="absolute inset-0 md:hidden overflow-hidden">
+            <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-cyan-500/10 rounded-full blur-3xl" />
+          </div>
           {/* Enhanced Overlay for Modern Vignette and Depth */}
           <div className="absolute inset-0 bg-gradient-to-b from-teal-950/40 via-gray-900/40 to-white" />
           <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/30 via-transparent to-transparent" />
@@ -436,8 +441,8 @@ export default function LandingPage({ onLoginSuccess, handleQuickDemoLogin }) {
         </div>
       </section>
 
-      {/* SECTION 2.5: CHOIX DU MEDECIN REFERENT (STICKY HORIZONTAL SCROLL) */}
-      <section ref={stickySectionRef} id="selection-medecin" className="relative h-[175vh] bg-white z-20 border-t border-gray-100">
+      {/* SECTION 2.5: CHOIX DU MEDECIN REFERENT (STICKY HORIZONTAL SCROLL FOR DESKTOP & VERTICAL FOR MOBILE) */}
+      <section ref={stickySectionRef} id="selection-medecin" className="hidden md:block relative h-[175vh] bg-white z-20 border-t border-gray-100">
         <div className="sticky top-0 h-screen flex flex-col justify-center overflow-hidden">
           <div className="max-w-7xl mx-auto px-6 w-full flex flex-col gap-12">
             <div className="text-left max-w-2xl">
@@ -512,6 +517,77 @@ export default function LandingPage({ onLoginSuccess, handleQuickDemoLogin }) {
                 })}
               </motion.div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* MOBILE VERTICAL SELECTION VERSION */}
+      <section id="selection-medecin-mobile" className="block md:hidden bg-white z-20 border-t border-gray-100 py-16 px-6 relative">
+        <div className="max-w-7xl mx-auto flex flex-col gap-10">
+          <div className="text-left">
+            <span className="text-emerald-500 font-bold uppercase tracking-widest text-xs flex items-center gap-1.5">
+              <Sparkles size={14} /> Suivi médical sur-mesure
+            </span>
+            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mt-3">
+              Sélectionnez votre Médecin Référent
+            </h2>
+            <p className="text-gray-500 font-semibold leading-relaxed text-sm mt-2">
+              Choisissez l'un de nos praticiens agréés à Antananarivo pour bénéficier d'un suivi de santé personnalisé. En sélectionnant un médecin, son profil sera pré-configuré lors de votre inscription.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-6 w-full">
+            {displayMedecins.map((doc) => {
+              const isSelected = selectedDoctorId === doc.id;
+              return (
+                <motion.div
+                  key={doc.id}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSelectDoctor(doc.id)}
+                  className={`w-full p-6 rounded-[2rem] border transition-all duration-300 cursor-pointer flex flex-col items-center justify-between text-center relative ${
+                    isSelected 
+                      ? 'bg-white border-emerald-500 shadow-[0_15px_30px_rgba(16,185,129,0.1)] ring-2 ring-emerald-500/20' 
+                      : 'bg-white border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.01)] hover:border-emerald-500/30'
+                  }`}
+                >
+                  {/* Subtle Badge if Selected */}
+                  {isSelected && (
+                    <span className="absolute top-4 right-4 bg-emerald-500 text-white text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                      <Check size={10} strokeWidth={3} /> Sélectionné
+                    </span>
+                  )}
+                  
+                  {/* Empty profile avatar placeholder */}
+                  <div className="flex flex-col items-center mt-2">
+                    <div className={`w-20 h-20 rounded-[1.5rem] flex items-center justify-center border mb-3 relative overflow-hidden transition-all duration-300 ${
+                      isSelected 
+                        ? 'bg-emerald-500/10 border-emerald-200 text-emerald-500 shadow-inner' 
+                        : 'bg-gray-50 border-gray-100 text-gray-400'
+                    }`}>
+                      <User size={36} strokeWidth={1.5} className="relative z-10" />
+                    </div>
+                    
+                    <h4 className="text-lg font-black text-gray-900 tracking-tight">{doc.nom}</h4>
+                    <p className="text-xs font-bold text-emerald-500 uppercase tracking-wide mt-1 bg-emerald-50 px-2.5 py-0.5 rounded-full">{doc.specialite || 'Médecin Référent'}</p>
+                    <p className="text-xs text-gray-400 mt-2 flex items-center gap-1 justify-center font-medium"><MapPin size={11} className="text-emerald-400" /> Antananarivo, Madagascar</p>
+                  </div>
+
+                  <div className="w-full mt-6">
+                    <button
+                      type="button"
+                      className={`w-full py-3.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
+                        isSelected 
+                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' 
+                          : 'bg-gray-50 text-gray-700 hover:bg-emerald-500 hover:text-white border border-gray-100'
+                      }`}
+                    >
+                      {isSelected ? "Prêt à s'inscrire" : "Choisir ce médecin"}
+                      <ArrowRight size={13} className={isSelected ? "translate-x-0.5" : ""} />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>

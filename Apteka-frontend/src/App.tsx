@@ -101,13 +101,23 @@ export default function App() {
   };
 
   const loadPrescriptions = async () => {
-    const res = await fetch(`${API_URL}/api/patient/ordonnances/my-history`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }});
-    const data = await res.json();
-    const parsedData = (data || []).map((p: any) => ({
-      ...p,
-      medicaments: typeof p.medicaments === 'string' ? JSON.parse(p.medicaments) : p.medicaments
-    }));
-    setMyPrescriptions(parsedData);
+    try {
+      const res = await fetch(`${API_URL}/api/patient/ordonnances/my-history`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }});
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        console.warn("loadPrescriptions output is not an array:", data);
+        setMyPrescriptions([]);
+        return;
+      }
+      const parsedData = data.map((p: any) => ({
+        ...p,
+        medicaments: typeof p.medicaments === 'string' ? JSON.parse(p.medicaments) : p.medicaments
+      }));
+      setMyPrescriptions(parsedData);
+    } catch (err) {
+      console.error("Error loading prescriptions:", err);
+      setMyPrescriptions([]);
+    }
   };
 
   const requestRenewal = async (id: string) => {
@@ -716,7 +726,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {adminStats.recentOrdonnances.map((o: any, idx: number) => (
+                    {adminStats.recentOrdonnances?.map((o: any, idx: number) => (
                       <tr key={idx} className="hover:bg-gray-50">
                         <td className="p-5 font-mono font-bold text-emerald-600 text-sm">{o.code}</td>
                         <td className="p-5 text-xs text-gray-500 font-semibold">
