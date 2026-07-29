@@ -112,12 +112,10 @@ async function register(req, res) {
 
       const hasSmtpConfig = process.env.SMTP_USER || transporter.options.auth.pass;
       if (hasSmtpConfig) {
-        try {
-          await transporter.sendMail(mailOptions);
-        } catch (mailError) {
+        transporter.sendMail(mailOptions).catch((mailError) => {
           console.error("Erreur d'envoi d'email réel, code affiché dans les logs:", mailError.message);
           console.log(`\n==========================================\n[DÉMO BACKUP LOG À ${email}] : Le code OTP est ${otpCode}\n==========================================\n`);
-        }
+        });
       } else {
         console.log(`\n==========================================\n[DÉMO OTP ENVOYÉ À ${email}] : Le code OTP est ${otpCode}\n==========================================\n`);
       }
@@ -342,11 +340,9 @@ async function approveProfessional(req, res) {
           </div>
         `
       };
-      try {
-        await transporter.sendMail(mailOptions);
-      } catch (mailError) {
+      transporter.sendMail(mailOptions).catch((mailError) => {
         console.error("Erreur d'envoi d'email d'approbation (non bloquant) :", mailError.message);
-      }
+      });
     }
 
     return res.status(200).json({ message: `Le compte professionnel de ${profile.firstName} ${profile.lastName} a été approuvé avec succès !` });
@@ -513,12 +509,10 @@ async function forgotPassword(req, res) {
 
     const hasSmtpConfig = process.env.SMTP_USER || transporter.options.auth.pass;
     if (hasSmtpConfig) {
-      try {
-        await transporter.sendMail(mailOptions);
-      } catch (mailError) {
+      transporter.sendMail(mailOptions).catch((mailError) => {
         console.error("Erreur d'envoi d'email de réinitialisation, code affiché dans les logs:", mailError.message);
         console.log(`\n==========================================\n[DÉMO BACKUP LOG RESET PASSWORD À ${email}] : Le code est ${otpCode}\n==========================================\n`);
-      }
+      });
     } else {
       console.log(`\n==========================================\n[DÉMO RESET PASSWORD À ${email}] : Le code est ${otpCode}\n==========================================\n`);
     }
@@ -617,12 +611,10 @@ async function resendOtp(req, res) {
 
     const hasSmtpConfig = process.env.SMTP_USER || transporter.options.auth.pass;
     if (hasSmtpConfig) {
-      try {
-        await transporter.sendMail(mailOptions);
-      } catch (mailError) {
+      transporter.sendMail(mailOptions).catch((mailError) => {
         console.error("Erreur d'envoi d'email (non bloquant), code affiché dans les logs:", mailError.message);
         console.log(`\n==========================================\n[DÉMO BACKUP LOG OTP RENVOYÉ À ${user.email}] : Le code est ${otpCode}\n==========================================\n`);
-      }
+      });
     } else {
       console.log(`\n==========================================\n[DÉMO OTP RENVOYÉ À ${user.email}] : Le code est ${otpCode}\n==========================================\n`);
     }
