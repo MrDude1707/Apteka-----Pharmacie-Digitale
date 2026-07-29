@@ -16,7 +16,7 @@ const transporter = nodemailer.createTransport({
   secure: isSecure,
   auth: {
     user: process.env.SMTP_USER || "resend",
-    pass: process.env.SMTP_PASS || "re_C1JqJz8u_ESbcAGCfn6VhCySBhL1uWqRc"
+    pass: process.env.SMTP_PASS || ""
   }
 });
 
