@@ -255,9 +255,9 @@ export default function LandingPage({ onLoginSuccess, handleQuickDemoLogin }) {
       />
 
       {/* Floating Glassmorphic Navbar */}
-      <nav className="fixed top-0 w-full z-50 px-6 sm:px-12 py-4 flex items-center justify-between bg-white/70 backdrop-blur-xl border-b border-gray-100/60 shadow-sm transition-all duration-300">
+      <nav className="fixed top-0 w-full z-50 px-6 sm:px-12 py-2.5 flex items-center justify-between bg-white/70 backdrop-blur-xl border-b border-gray-100/60 shadow-sm transition-all duration-300">
         <Logo variant="light" size="md" />
-        <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-gray-600">
+        <div className="hidden md:flex items-center gap-6 text-[13px] font-semibold text-gray-600">
           <button onClick={() => featuresSectionRef.current?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-emerald-500 transition-colors">Comment ça marche</button>
           <a href="#statistiques" className="hover:text-emerald-500 transition-colors">Statistiques</a>
           <a href="#pourquoi-apteka" className="hover:text-emerald-500 transition-colors">Avantages</a>
