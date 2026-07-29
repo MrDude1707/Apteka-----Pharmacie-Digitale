@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const prisma = require('../prisma');
 
 const JWT_SECRET = process.env.JWT_SECRET || "TANA_PHARMA_SECURE_JWT_KEY_L2_MEMOIRE_2026";
@@ -19,6 +20,24 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS || ""
   }
 });
+
+const isMailtrap = !!(process.env.SMTP_HOST && process.env.SMTP_HOST.includes('mailtrap'));
+const resendClient = (!isMailtrap && process.env.SMTP_PASS) ? new Resend(process.env.SMTP_PASS) : null;
+
+async function sendEmail(mailOptions) {
+  if (isMailtrap) {
+    return transporter.sendMail(mailOptions);
+  }
+  if (resendClient) {
+    return resendClient.emails.send({
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+      html: mailOptions.html
+    });
+  }
+  return transporter.sendMail(mailOptions);
+}
 
 /**
  * INSCRIPTION
@@ -110,9 +129,9 @@ async function register(req, res) {
         `
       };
 
-      const hasSmtpConfig = process.env.SMTP_USER || transporter.options.auth.pass;
+      const hasSmtpConfig = process.env.SMTP_USER || transporter.options.auth.pass || resendClient;
       if (hasSmtpConfig) {
-        transporter.sendMail(mailOptions).catch((mailError) => {
+        sendEmail(mailOptions).catch((mailError) => {
           console.error("Erreur d'envoi d'email réel, code affiché dans les logs:", mailError.message);
           console.log(`\n==========================================\n[DÉMO BACKUP LOG À ${email}] : Le code OTP est ${otpCode}\n==========================================\n`);
         });
@@ -340,7 +359,7 @@ async function approveProfessional(req, res) {
           </div>
         `
       };
-      transporter.sendMail(mailOptions).catch((mailError) => {
+      sendEmail(mailOptions).catch((mailError) => {
         console.error("Erreur d'envoi d'email d'approbation (non bloquant) :", mailError.message);
       });
     }
@@ -507,9 +526,9 @@ async function forgotPassword(req, res) {
       `
     };
 
-    const hasSmtpConfig = process.env.SMTP_USER || transporter.options.auth.pass;
+    const hasSmtpConfig = process.env.SMTP_USER || transporter.options.auth.pass || resendClient;
     if (hasSmtpConfig) {
-      transporter.sendMail(mailOptions).catch((mailError) => {
+      sendEmail(mailOptions).catch((mailError) => {
         console.error("Erreur d'envoi d'email de réinitialisation, code affiché dans les logs:", mailError.message);
         console.log(`\n==========================================\n[DÉMO BACKUP LOG RESET PASSWORD À ${email}] : Le code est ${otpCode}\n==========================================\n`);
       });
@@ -609,9 +628,9 @@ async function resendOtp(req, res) {
       `
     };
 
-    const hasSmtpConfig = process.env.SMTP_USER || transporter.options.auth.pass;
+    const hasSmtpConfig = process.env.SMTP_USER || transporter.options.auth.pass || resendClient;
     if (hasSmtpConfig) {
-      transporter.sendMail(mailOptions).catch((mailError) => {
+      sendEmail(mailOptions).catch((mailError) => {
         console.error("Erreur d'envoi d'email (non bloquant), code affiché dans les logs:", mailError.message);
         console.log(`\n==========================================\n[DÉMO BACKUP LOG OTP RENVOYÉ À ${user.email}] : Le code est ${otpCode}\n==========================================\n`);
       });
