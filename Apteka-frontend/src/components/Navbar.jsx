@@ -1,12 +1,12 @@
 import React from 'react';
-import { ShieldCheck, LogOut, MapPin, Pill, ClipboardList, Settings, Users, MessageCircle, RefreshCw } from 'lucide-react';
+import { ShieldCheck, LogOut, MapPin, Pill, ClipboardList, Settings, Users, MessageCircle, RefreshCw, Package } from 'lucide-react';
 import Logo from './Logo';
 
 export default function Navbar({ user, onLogout, activeTab, setActiveTab }) {
   return (
     <nav className="sticky top-0 z-[1000] w-full bg-white/75 backdrop-blur-md border-b border-gray-200/40 px-6 py-3 flex items-center justify-between">
       <div className="cursor-pointer" onClick={() => { setActiveTab(user.role === 'MEDECIN' ? 'medecin_stocks' : user.role === 'PHARMACIEN' ? 'pharmacien_deliver' : user.role === 'ADMINISTRATEUR' ? 'admin_users' : 'recherche'); }}>
-        <Logo size="sm" />
+        <span className="text-xl font-black bg-gradient-to-r from-teal-500 to-sky-500 bg-clip-text text-transparent tracking-widest uppercase">APTEKA</span>
       </div>
 
       {user && (
@@ -14,6 +14,7 @@ export default function Navbar({ user, onLogout, activeTab, setActiveTab }) {
           {user.role === 'PATIENT' && (
             <>
               <button onClick={() => setActiveTab('recherche')} className={`px-4 py-2 rounded-full transition-all ${activeTab === 'recherche' ? 'bg-emerald-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><Pill size={16} className="inline mr-1" />Achat Médicaments</button>
+              <button onClick={() => setActiveTab('patient_deliveries')} className={`px-4 py-2 rounded-full transition-all ${activeTab === 'patient_deliveries' ? 'bg-emerald-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><Package size={16} className="inline mr-1" />Suivi Livraisons</button>
               <button onClick={() => setActiveTab('pharmacies_map')} className={`px-4 py-2 rounded-full transition-all ${activeTab === 'pharmacies_map' ? 'bg-emerald-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><MapPin size={16} className="inline mr-1" />Carte Réseau</button>
               <button onClick={() => setActiveTab('prescriptions')} className={`px-4 py-2 rounded-full transition-all ${activeTab === 'prescriptions' ? 'bg-emerald-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><ClipboardList size={16} className="inline mr-1" />Mes Ordonnances</button>
               <button onClick={() => setActiveTab('messagerie')} className={`px-4 py-2 rounded-full transition-all ${activeTab === 'messagerie' ? 'bg-emerald-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><MessageCircle size={16} className="inline mr-1" />Chat Docteur</button>
@@ -33,6 +34,7 @@ export default function Navbar({ user, onLogout, activeTab, setActiveTab }) {
           {user.role === 'PHARMACIEN' && (
             <>
               <button onClick={() => setActiveTab('pharmacien_deliver')} className={`px-4 py-2 rounded-full transition-all ${activeTab === 'pharmacien_deliver' ? 'bg-emerald-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><ShieldCheck size={16} className="inline mr-1" />Délivrer</button>
+              <button onClick={() => setActiveTab('pharmacien_deliveries')} className={`px-4 py-2 rounded-full transition-all ${activeTab === 'pharmacien_deliveries' ? 'bg-emerald-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><Package size={16} className="inline mr-1" />Commandes & Livraisons</button>
               <button onClick={() => setActiveTab('pharmacien_stocks')} className={`px-4 py-2 rounded-full transition-all ${activeTab === 'pharmacien_stocks' ? 'bg-emerald-500 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><Pill size={16} className="inline mr-1" />Inventaire</button>
             </>
           )}

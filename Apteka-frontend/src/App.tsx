@@ -4,6 +4,7 @@ import LandingPage from './components/LandingPage';
 import MapRoute from './components/MapRoute';
 import DoctorDashboard from './components/DoctorDashboard';
 import PharmacistDashboard from './components/PharmacistDashboard';
+import PatientDashboard from './components/PatientDashboard';
 import { Search, CheckCircle, ClipboardList, ShoppingCart, MessageCircle, FileText, Send, X, CreditCard, HeartPulse, Printer, Pill, Users, Check } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { API_URL } from './config';
@@ -289,235 +290,25 @@ export default function App() {
     );
   }
 
+  // Early returns for professional and patient workspaces to enable clean full-screen layouts
+  if (user && user.role === 'MEDECIN') {
+    return <DoctorDashboard user={user} activeTab={activeTab} setActiveTab={setActiveTab} />;
+  }
+
+  if (user && user.role === 'PHARMACIEN') {
+    return <PharmacistDashboard user={user} activeTab={activeTab} setActiveTab={setActiveTab} />;
+  }
+
+  if (user && user.role === 'PATIENT') {
+    return <PatientDashboard user={user} activeTab={activeTab} setActiveTab={setActiveTab} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar user={user} onLogout={() => { localStorage.removeItem('token'); setUser(null); }} activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <main className="flex-1 w-full max-w-7xl mx-auto py-6">
         
-        {/* RECHERCHE AVEC AUTOCOMPLETE */}
-        {activeTab === 'recherche' && (
-          <div className="px-4 flex flex-col gap-6">
-            <div className="p-8 bg-white rounded-3xl shadow-sm border border-emerald-100 relative">
-              <span className="text-xs font-bold text-emerald-600 tracking-widest uppercase mb-1 block">Achat Patient</span>
-              <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Trouver un Médicament</h3>
-              <div className="relative mt-6">
-                <Search className="absolute left-4 top-4 text-gray-400" size={20} />
-                <input type="text" value={searchQuery} onChange={(e) => handleAutocomplete(e.target.value)} placeholder="Taper le nom d'un médicament (ex: Paracétamol, Doliprane...)" className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all font-medium text-lg" />
-                
-                {suggestions.length > 0 && (
-                  <div className="absolute top-16 left-0 w-full bg-white border border-gray-100 shadow-2xl rounded-2xl z-50 overflow-hidden">
-                    {suggestions.map(s => (
-                      <div key={s.id} onClick={() => { handleSearchMeds(s.nom); }} className="p-4 hover:bg-emerald-50 cursor-pointer border-b text-sm font-bold text-gray-800 flex justify-between items-center transition-colors">
-                        <span>{s.nom}</span>
-                        <span className="text-[10px] font-bold uppercase tracking-widest bg-gray-100 px-3 py-1 rounded-full text-gray-500">{s.categorie}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {searchStocks.length === 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
-                {/* CATEGORIES CARD */}
-                <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
-                  <h4 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg"><ClipboardList size={18}/></span>
-                    Explorer par Catégorie
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { name: "Antalgique", desc: "Soulagement des douleurs", color: "from-blue-500/10 to-blue-500/5 text-blue-700 hover:border-blue-300" },
-                      { name: "Anti-inflammatoire", desc: "Traitement des inflammations", color: "from-red-500/10 to-red-500/5 text-red-700 hover:border-red-300" },
-                      { name: "Antibiotique", desc: "Infections bactériennes", color: "from-amber-500/10 to-amber-500/5 text-amber-700 hover:border-amber-300" },
-                      { name: "Gastro-entérologie", desc: "Maux d'estomac, transit", color: "from-emerald-500/10 to-emerald-500/5 text-emerald-700 hover:border-emerald-300" }
-                    ].map(cat => (
-                      <button
-                        key={cat.name}
-                        type="button"
-                        onClick={() => handleSearchMeds(cat.name)}
-                        className={`p-4 rounded-2xl bg-gradient-to-br ${cat.color} border border-transparent hover:shadow-sm text-left transition-all cursor-pointer flex flex-col gap-1`}
-                      >
-                        <b className="font-extrabold text-sm">{cat.name}</b>
-                        <span className="text-[10px] opacity-75 font-semibold leading-normal">{cat.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* POPULAR MEDICINES CARD */}
-                <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm">
-                  <h4 className="text-lg font-extrabold text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="p-1.5 bg-rose-50 text-rose-500 rounded-lg"><Pill size={18}/></span>
-                    Médicaments les plus recherchés
-                  </h4>
-                  <div className="flex flex-wrap gap-2.5">
-                    {[
-                      { name: "Doliprane", label: "Doliprane 1000 mg", price: "2.10 €" },
-                      { name: "Paracétamol", label: "Paracétamol Biogaran", price: "1.95 €" },
-                      { name: "Spasfon", label: "Spasfon 80 mg", price: "3.50 €" },
-                      { name: "Ibuprofène", label: "Ibuprofène Biogaran", price: "2.50 €" },
-                      { name: "Smecta", label: "Smecta 3 g", price: "4.50 €" },
-                      { name: "Maalox", label: "Maalox suspension", price: "4.80 €" }
-                    ].map(med => (
-                      <button
-                        key={med.name}
-                        type="button"
-                        onClick={() => handleSearchMeds(med.name)}
-                        className="px-4 py-3 bg-gray-50 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-gray-100 rounded-2xl text-xs font-bold text-gray-700 transition-all flex items-center gap-3 cursor-pointer shadow-sm"
-                      >
-                        <span>{med.label}</span>
-                        <span className="bg-white px-2 py-0.5 rounded-lg border text-[10px] text-emerald-600 font-extrabold">{med.price}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-4 flex flex-col gap-4">
-                  <div className="flex justify-between items-center px-2">
-                    <h4 className="font-extrabold text-gray-900">Résultats de stock ({searchStocks.length})</h4>
-                    <button onClick={() => setSearchStocks([])} className="text-xs font-bold text-gray-400 hover:text-emerald-500 transition-colors cursor-pointer">Effacer</button>
-                  </div>
-                  <div className="flex flex-col gap-4 max-h-[500px] overflow-y-auto pr-1">
-                    {searchStocks.map(stock => (
-                      <div key={stock.id} className="p-5 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-3 hover:border-emerald-500/30 transition-colors">
-                        <div className="flex justify-between items-start">
-                          <b className="text-base text-gray-900 leading-tight">{stock.pharmacie.name}</b> 
-                          <span className="text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full shrink-0">Stock: {stock.quantite}</span>
-                        </div>
-                        <div className="flex justify-between text-sm items-center mt-2 border-t pt-3">
-                          <b className="text-emerald-600 text-lg">{stock.medicament.prix} €</b>
-                          <button
-                            onClick={() => {
-                              if (cart.some(c => c.id === stock.id)) {
-                                alert("Ce produit de cette pharmacie est déjà dans votre panier.");
-                                return;
-                              }
-                              setCart([...cart, { ...stock, qty: 1 }]);
-                              alert("Produit ajouté au panier !");
-                            }}
-                            className="bg-gray-900 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-500 transition-colors shadow-lg cursor-pointer"
-                          >
-                            <ShoppingCart size={16}/> Ajouter
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="lg:col-span-8 h-[550px]"><MapRoute pharmacies={searchStocks.map(s=>s.pharmacie)} stocks={searchStocks} patientLocation={patientLocation} onPatientLocationChange={setPatientLocation} /></div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TOUTES LES PHARMACIES MAP */}
-        {activeTab === 'pharmacies_map' && (
-          <div className="px-4 h-[750px] flex flex-col gap-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Réseau des Pharmacies</h2>
-                <p className="text-xs text-gray-500 mt-1 font-medium">Découvrez nos <strong className="text-emerald-600 font-bold">{allPharmacies.length} pharmacies agréées</strong> réparties sur tout le réseau d'Antananarivo.</p>
-              </div>
-              <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-2xl border border-gray-100 shadow-sm">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Filtrer par Zone :</span>
-                <select
-                  value={selectedZone}
-                  onChange={(e) => setSelectedZone(e.target.value)}
-                  className="bg-transparent text-xs font-extrabold text-gray-800 outline-none cursor-pointer border-none"
-                >
-                  <option value="">-- Toutes les zones ({(Array.isArray(allPharmacies) ? allPharmacies.length : 0)}) --</option>
-                  {Array.from(new Set((Array.isArray(allPharmacies) ? allPharmacies : []).map(p => p.zone).filter(Boolean))).sort().map(z => (
-                    <option key={z} value={z}>{z} ({(Array.isArray(allPharmacies) ? allPharmacies : []).filter(p => p.zone === z).length})</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 h-0">
-              {/* LISTE DES PHARMACIES A GAUCHE */}
-              <div className="lg:col-span-4 flex flex-col h-full bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-2">
-                  Pharmacies ({selectedZone ? (Array.isArray(allPharmacies) ? allPharmacies.filter(p => p.zone === selectedZone).length : 0) : (Array.isArray(allPharmacies) ? allPharmacies.length : 0)})
-                </span>
-                <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3">
-                  {(Array.isArray(allPharmacies) ? (selectedZone ? allPharmacies.filter(p => p.zone === selectedZone) : allPharmacies) : []).map(p => (
-                    <div
-                      key={p.id}
-                      onClick={() => setPatientLocation({ lat: p.latitude, lng: p.longitude })}
-                      className="p-4 bg-gray-50 hover:bg-emerald-50 hover:border-emerald-200 cursor-pointer rounded-2xl border border-gray-100 transition-all duration-200 flex flex-col gap-1 text-left"
-                    >
-                      <b className="text-sm text-gray-900 leading-tight font-extrabold">{p.name}</b>
-                      <p className="text-[11px] text-gray-500 font-medium">Zone : <span className="font-bold text-emerald-600">{p.zone || "N/A"}</span></p>
-                      {p.phone && <p className="text-[11px] text-gray-400 mt-0.5">Tél : {p.phone}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* CARTE GOOGLE MAPS / LEAFLET A DROITE */}
-              <div className="lg:col-span-8 h-full rounded-3xl overflow-hidden border border-gray-100 shadow-md">
-                <MapRoute
-                  pharmacies={Array.isArray(allPharmacies) ? (selectedZone ? allPharmacies.filter(p => p.zone === selectedZone) : allPharmacies) : []}
-                  stocks={[]}
-                  patientLocation={patientLocation}
-                  onPatientLocationChange={setPatientLocation}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* PRESCRIPTIONS (VRAI RENDU PDF) */}
-        {activeTab === 'prescriptions' && (
-          <div className="px-4 max-w-4xl mx-auto">
-            <h3 className="text-3xl font-extrabold mb-8 text-gray-900">Mes Ordonnances Officielles</h3>
-            <div className="grid gap-4">
-              {(Array.isArray(myPrescriptions) ? myPrescriptions : []).map(p => (
-                <div key={p.id} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:shadow-md transition-shadow">
-                  <div>
-                    <span className="font-mono text-emerald-600 font-bold text-lg bg-emerald-50 px-3 py-1 rounded-lg">{p.code}</span>
-                    <p className="text-gray-900 font-bold mt-3 text-lg">{p.medecinName}</p>
-                    <p className="text-sm text-gray-500">{p.medecinSpec}</p>
-                  </div>
-                  <div className="flex gap-3 w-full sm:w-auto">
-                    <button onClick={() => requestRenewal(p.id)} className="flex-1 sm:flex-none px-5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-sm rounded-xl font-bold transition-colors">Renouveler</button>
-                    <button onClick={() => setViewPdfOrdonnance(p)} className="flex-1 sm:flex-none px-5 py-2.5 bg-gray-900 hover:bg-emerald-500 text-white text-sm rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"><FileText size={16}/> Ouvrir</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* MESSAGERIE PATIENT */}
-        {activeTab === 'messagerie' && (
-          <div className="px-4 max-w-3xl mx-auto h-[600px] flex flex-col bg-white rounded-[2.5rem] border border-gray-100 shadow-xl overflow-hidden">
-            <div className="p-6 border-b border-gray-100 font-extrabold flex items-center gap-3 bg-gradient-to-r from-emerald-50 to-white text-emerald-900 text-lg">
-              <div className="p-2 bg-emerald-100 rounded-full text-emerald-600"><MessageCircle size={20}/></div>
-              Chat Sécurisé avec votre Médecin
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 bg-gray-50/50">
-              {chatMessages.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-gray-400"><MessageCircle size={48} className="mb-4 opacity-50"/> <p>Aucun message. Commencez la discussion.</p></div>
-              ) : (
-                chatMessages.map(m => (
-                  <div key={m.id} className={`p-4 rounded-2xl max-w-[75%] text-sm font-medium shadow-sm ${m.senderId === user.id ? 'bg-emerald-500 text-white self-end rounded-br-none' : 'bg-white border border-gray-100 text-gray-800 self-start rounded-bl-none'}`}>
-                    {m.content}
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="p-4 bg-white border-t border-gray-100 flex gap-3">
-              <input type="text" value={newMessage} onChange={e=>setNewMessage(e.target.value)} onKeyDown={e=>e.key==='Enter' && sendMessage()} className="flex-1 bg-gray-100 rounded-2xl px-6 text-sm outline-none font-medium focus:ring-2 focus:ring-emerald-500/20" placeholder="Écrivez votre message..." />
-              <button onClick={sendMessage} className="w-14 h-14 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30 transition-colors"><Send size={20}/></button>
-            </div>
-          </div>
-        )}
-
         {/* ADMIN: COMPTES EN ATTENTE D'APPROBATION */}
         {activeTab === 'admin_users' && (
           <div className="px-4 max-w-5xl mx-auto">
@@ -778,139 +569,6 @@ export default function App() {
         {user.role === 'PHARMACIEN' && <PharmacistDashboard user={user} activeTab={activeTab} setActiveTab={setActiveTab} />}
       </main>
 
-      {/* FAKE CHECKOUT MODAL */}
-      {cart.length > 0 && !showCheckout && (
-        <button onClick={()=>setShowCheckout(true)} className="fixed bottom-8 right-8 bg-gray-900 text-white px-8 py-4 rounded-full shadow-2xl font-bold flex items-center gap-3 hover:scale-105 transition-transform z-50">
-          <ShoppingCart size={20}/> Finaliser Achat ({cart.length})
-        </button>
-      )}
-
-      {showCheckout && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4">
-          <div className="bg-white p-8 rounded-[2.5rem] max-w-xl w-full relative shadow-2xl">
-            <button onClick={()=>setShowCheckout(false)} className="absolute top-6 right-6 p-2 bg-gray-100 rounded-full hover:bg-gray-200 cursor-pointer"><X size={20}/></button>
-            {checkoutSuccess ? (
-              <div className="text-center py-10"><CheckCircle size={64} className="text-emerald-500 mx-auto mb-6"/> <h3 className="text-2xl font-extrabold text-gray-900">Paiement Réussi !</h3><p className="text-sm mt-3 text-gray-500 font-medium">Votre commande est transmise à la pharmacie.</p></div>
-            ) : (
-              <form onSubmit={processFakeCheckout} className="flex flex-col gap-5">
-                <h3 className="text-2xl font-extrabold text-gray-900 border-b border-gray-100 pb-4">Finaliser Votre Achat</h3>
-                
-                {/* LISTE DES ARTICLES DANS LE PANIER */}
-                <div className="flex flex-col gap-3 max-h-[220px] overflow-y-auto pr-1 border-b border-gray-100 pb-4">
-                  <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Récapitulatif de la commande</span>
-                  {cart.map((c, idx) => (
-                    <div key={idx} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex justify-between items-center gap-3 text-xs">
-                      <div className="flex-1">
-                        <p className="font-extrabold text-gray-900 text-sm">{c.medicament.nom}</p>
-                        <p className="text-[11px] text-gray-500 font-medium mt-0.5">Pharmacie : <span className="font-bold text-emerald-600">{c.pharmacie.name}</span></p>
-                        <p className="font-mono font-bold text-gray-700 mt-1">{(c.medicament.prix * (c.qty || 1)).toFixed(2)} €</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                          <button type="button" onClick={() => updateCartQty(idx, (c.qty || 1) - 1)} className="px-2.5 py-1.5 hover:bg-gray-50 font-bold text-gray-500 cursor-pointer">-</button>
-                          <span className="px-3 font-mono font-bold text-gray-800 text-xs">{c.qty || 1}</span>
-                          <button type="button" onClick={() => updateCartQty(idx, (c.qty || 1) + 1)} className="px-2.5 py-1.5 hover:bg-gray-50 font-bold text-gray-500 cursor-pointer">+</button>
-                        </div>
-                        <button type="button" onClick={() => removeFromCart(idx)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"><X size={14}/></button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="bg-emerald-50 text-emerald-900 p-5 rounded-2xl text-lg flex justify-between font-extrabold border border-emerald-100">
-                  <span>Total à payer</span> 
-                  <span>{cart.reduce((a,c)=>a+(c.medicament.prix||0)*(c.qty||1),0).toFixed(2)} €</span>
-                </div>
-
-                <div className="flex border border-gray-200 rounded-2xl overflow-hidden mt-2 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
-                  <div className="bg-gray-50 p-4 border-r border-gray-200"><CreditCard size={20} className="text-gray-500"/></div>
-                  <input type="text" required placeholder="Numéro de carte (Fake)" className="flex-1 px-4 font-mono font-medium outline-none text-sm" maxLength={16} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="text" placeholder="MM/YY" required className="border border-gray-200 p-4 rounded-2xl outline-none font-mono font-medium focus:border-emerald-500 text-sm" />
-                  <input type="text" placeholder="CVC" required className="border border-gray-200 p-4 rounded-2xl outline-none font-mono font-medium focus:border-emerald-500 text-sm" maxLength={3} />
-                </div>
-                <button type="submit" className="bg-gray-900 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl mt-2 transition-all text-base shadow-lg cursor-pointer">
-                  Payer {cart.reduce((a,c)=>a+(c.medicament.prix||0)*(c.qty||1),0).toFixed(2)} €
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* PDF ORDONNANCE MODAL */}
-      {viewPdfOrdonnance && (
-        <div className="fixed inset-0 bg-gray-900/90 backdrop-blur-sm z-[2000] flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-2xl h-[85vh] rounded-3xl relative flex flex-col overflow-hidden shadow-2xl">
-            <div className="bg-gray-900 text-white p-4 flex justify-between items-center">
-              <span className="font-mono text-sm font-bold tracking-widest text-emerald-400">APERÇU OFFICIEL - {viewPdfOrdonnance.code}</span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => window.print()} className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer mr-2">
-                  <Printer size={14}/> Imprimer
-                </button>
-                <button onClick={()=>setViewPdfOrdonnance(null)} className="p-2 hover:bg-white/20 rounded-full"><X size={20}/></button>
-              </div>
-            </div>
-            
-            <div id="print-prescription" className="p-10 flex-1 overflow-y-auto font-sans bg-white relative" style={{ backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
-              
-              <div className="absolute top-10 left-10 opacity-5"><HeartPulse size={200} /></div>
-
-              <div className="flex justify-between items-start border-b-4 border-emerald-500 pb-8 relative z-10 font-sans">
-                <div>
-                  <h1 className="text-4xl font-serif font-extrabold text-gray-900 leading-tight">{viewPdfOrdonnance.medecinName}</h1>
-                  <p className="text-base text-gray-500 mt-2 font-medium">{viewPdfOrdonnance.medecinSpec}</p>
-                  <p className="text-xs text-gray-400 mt-1 uppercase tracking-wider font-bold">Apteka • Antananarivo, Madagascar</p>
-                </div>
-                <div className="text-right text-sm bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                  <div className="mb-2"><b className="text-gray-400 uppercase text-[10px] tracking-wider block">Date d'émission</b><span className="font-bold text-gray-900">{new Date(viewPdfOrdonnance.dateEmission).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
-                  <div><b className="text-gray-400 uppercase text-[10px] tracking-wider block">Patient</b><span className="font-bold text-gray-900">{user.firstName} {user.lastName}</span></div>
-                </div>
-              </div>
-              
-              <div className="py-12 min-h-[300px] relative z-10">
-                <h2 className="text-2xl font-bold mb-8 italic text-emerald-900 border-l-4 border-emerald-500 pl-4">Prescription Médicale</h2>
-                {viewPdfOrdonnance.medicaments.map((m:any, i:number) => (
-                  <div key={i} className="mb-6 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-                    <div className="flex justify-between items-start flex-wrap gap-2">
-                      <p className="text-xl font-bold text-gray-900 flex items-center gap-3">
-                        <span className="text-emerald-500 font-serif text-3xl font-bold">Rx</span> {m.nom}
-                      </p>
-                      <div className="flex gap-2">
-                        <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">Qté: {m.quantite}</span>
-                        {m.duree && <span className="text-xs font-extrabold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">Durée: {m.duree}</span>}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 text-sm">
-                      <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100">
-                        <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider mb-1">Dosage unitaire</span>
-                        <span className="font-bold text-gray-800">{m.dosage || "1 comprimé"}</span>
-                      </div>
-                      <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100">
-                        <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider mb-1">Instructions (Posologie)</span>
-                        <span className="font-bold text-gray-800">{m.posologie}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t-2 border-gray-100 pt-8 flex justify-between items-end relative z-10">
-                <div>
-                  <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Document Certifié</p>
-                  <p className="text-xs text-gray-400 font-medium">Généré et signé électroniquement par l'infrastructure Apteka.</p>
-                  <p className="text-xs text-gray-400 font-medium mt-1">Signature Numérique : <b className="text-gray-900 font-serif italic text-base">{viewPdfOrdonnance.medecinName}</b></p>
-                </div>
-                <div className="p-3 border border-gray-200 rounded-2xl bg-white shadow-sm flex flex-col items-center gap-2">
-                  <QRCode value={viewPdfOrdonnance.code} size={100} />
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Scan Pharmacie</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

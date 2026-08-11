@@ -120,3 +120,126 @@ body {
     background-image: none !important;
   }
 }
+
+/* ==============================================
+   PREMIUM SENIOR DESIGN SYSTEMS ADDITIONS
+   ============================================== */
+
+/* Premium Glassmorphism Panel */
+.glass-premium {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 
+    0 4px 30px rgba(0, 0, 0, 0.02),
+    0 1px 3px rgba(0, 0, 0, 0.01),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.glass-premium-dark {
+  background: rgba(29, 29, 31, 0.65);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 4px 30px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Subtle Shimmer effect on hover */
+@keyframes shimmer-glow {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-hover {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+}
+
+.shimmer-hover:hover {
+  animation: shimmer-glow 1.6s ease-in-out;
+}
+
+/* Scanner Line Animation for Pharmacist */
+@keyframes scanner-laser {
+  0% {
+    top: 0%;
+  }
+  50% {
+    top: 100%;
+  }
+  100% {
+    top: 0%;
+  }
+}
+
+.scan-laser-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0) 0%, rgba(16, 185, 129, 1) 50%, rgba(16, 185, 129, 0) 100%);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.8);
+  animation: scanner-laser 3s infinite ease-in-out;
+  pointer-events: none;
+}
+
+/* Hologram Scanning Grid Effect */
+@keyframes hologram-grid {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 40px;
+  }
+}
+
+.hologram-overlay {
+  background-size: 20px 20px;
+  background-image: 
+    linear-gradient(to right, rgba(16, 185, 129, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
+  animation: hologram-grid 10s linear infinite;
+}
+
+/* Digital Seal / Stamp Animation */
+@keyframes stamp-press {
+  0% {
+    opacity: 0;
+    transform: scale(3.5) rotate(-35deg);
+    filter: blur(4px);
+  }
+  60% {
+    opacity: 0.9;
+    transform: scale(0.95) rotate(-12deg);
+    filter: blur(0px);
+  }
+  75% {
+    transform: scale(1.05) rotate(-15deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-15deg);
+  }
+}
+
+.digital-seal-stamped {
+  animation: stamp-press 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  transform-origin: center;
+}
+
+/* Micro-shadow transition */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}

@@ -235,9 +235,95 @@ async function updateStock(req, res) {
   }
 }
 
+/**
+ * RÉCUPÉRER TOUTES LES COMMANDES CONCERNANT L'OFFICINE DU PHARMACIEN
+ */
+async function getMyPharmacyCommandes(req, res) {
+  const pharmacieId = req.user.profile.pharmacieId;
+
+  try {
+    if (!pharmacieId) {
+      return res.status(400).json({ error: "Aucune pharmacie rattachée à votre profil." });
+    }
+
+    const commandes = await prisma.commande.findMany({
+      where: {
+        pharmacieId,
+        status: { not: "EN_ATTENTE_DE_PAIEMENT" } // Exclure les sessions de paiement en cours non validées
+      },
+      include: {
+        patient: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                phone: true,
+                zone: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return res.status(200).json(commandes);
+  } catch (error) {
+    console.error("Erreur getMyPharmacyCommandes :", error);
+    return res.status(500).json({ error: "Erreur lors du chargement des commandes de la pharmacie." });
+  }
+}
+
+/**
+ * METTRE À JOUR LE STATUT DE LIVRAISON / TRAITEMENT D'UNE COMMANDE (ex: PAYEE -> EN_ROUTE -> LIVREE)
+ */
+async function updateCommandeStatus(req, res) {
+  const { id } = req.params;
+  const { status } = req.body;
+  const pharmacieId = req.user.profile.pharmacieId;
+
+  try {
+    if (!pharmacieId) {
+      return res.status(400).json({ error: "Aucune pharmacie rattachée à votre profil." });
+    }
+
+    if (!id || !status) {
+      return res.status(400).json({ error: "L'ID de la commande et le nouveau statut sont requis." });
+    }
+
+    // Vérifier que la commande appartient à la pharmacie du pharmacien
+    const commande = await prisma.commande.findUnique({
+      where: { id }
+    });
+
+    if (!commande || commande.pharmacieId !== pharmacieId) {
+      return res.status(403).json({ error: "Vous n'êtes pas autorisé à modifier cette commande." });
+    }
+
+    const updatedCommande = await prisma.commande.update({
+      where: { id },
+      data: { status }
+    });
+
+    return res.status(200).json({
+      message: `Statut de la commande mis à jour avec succès : ${status}`,
+      commande: updatedCommande
+    });
+
+  } catch (error) {
+    console.error("Erreur de mise à jour du statut de la commande :", error);
+    return res.status(500).json({ error: "Erreur lors de la modification du statut de la commande." });
+  }
+}
+
 module.exports = {
   getOrdonnanceByCode,
   deliverOrdonnance,
   getMyPharmacyStocks,
-  updateStock
+  updateStock,
+  getMyPharmacyCommandes,
+  updateCommandeStatus
 };

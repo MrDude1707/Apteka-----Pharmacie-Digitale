@@ -10,6 +10,9 @@ router.get('/medicaments/autocomplete', patientController.getAutocomplete);
 router.get('/ordonnances/my-history', patientController.getMyPrescriptions);
 router.post('/ordonnances/:id/renew', patientController.requestRenewal);
 router.post('/commandes', patientController.createCommande);
+router.post('/commandes/create-checkout-session', patientController.createCheckoutSession);
+router.post('/commandes/verify-checkout-session', patientController.verifyCheckoutSession);
+router.get('/commandes/my-history', patientController.getMyCommandes);
 router.get('/messages', patientController.getMessages);
 router.post('/messages', patientController.sendMessage);
 
