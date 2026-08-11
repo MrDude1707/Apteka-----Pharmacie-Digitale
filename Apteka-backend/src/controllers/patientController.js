@@ -5,9 +5,15 @@ async function searchMedicamentAndStocks(req, res) {
   const { query } = req.query;
   try {
     if (!query || query.trim() === '') return res.status(400).json({ error: "Recherche vide." });
-    const searchLower = query.toLowerCase();
-    const medicaments = await prisma.medicament.findMany();
-    const matchingMeds = medicaments.filter(m => m.nom.toLowerCase().includes(searchLower) || (m.substanceActive && m.substanceActive.toLowerCase().includes(searchLower)));
+    
+    const matchingMeds = await prisma.medicament.findMany({
+      where: {
+        OR: [
+          { nom: { contains: query, mode: 'insensitive' } },
+          { substanceActive: { contains: query, mode: 'insensitive' } }
+        ]
+      }
+    });
     
     if (matchingMeds.length === 0) return res.status(200).json({ medicaments: [], stocks: [], message: "Aucun médicament correspondant trouvé." });
 
@@ -18,6 +24,7 @@ async function searchMedicamentAndStocks(req, res) {
     });
     return res.status(200).json({ medicaments: matchingMeds, stocks: stocks });
   } catch (error) {
+    console.error("Erreur lors de la recherche de médicaments :", error);
     return res.status(500).json({ error: "Une erreur est survenue lors de la recherche." });
   }
 }

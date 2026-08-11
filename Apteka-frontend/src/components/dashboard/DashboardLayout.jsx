@@ -16,7 +16,7 @@ export default function DashboardLayout({
 }) {
   const containerRef = useRef(null);
 
-  // Trigger GSAP stagger animation on first render of the dashboard content
+  // Trigger GSAP stagger animation on first render of the dashboard layout
   useGSAP(() => {
     gsap.fromTo('.dash-sidebar', 
       { opacity: 0, x: -50 }, 
@@ -27,12 +27,15 @@ export default function DashboardLayout({
       { opacity: 0, y: -30 }, 
       { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out', delay: 0.1 }
     );
+  }, { scope: containerRef, dependencies: [] });
 
+  // Trigger content-card animation only when the active tab changes
+  useGSAP(() => {
     gsap.fromTo('.dash-content-card', 
       { opacity: 0, scale: 0.98, y: 15 }, 
-      { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: 'power3.out', delay: 0.2 }
+      { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: 'power3.out' }
     );
-  }, { scope: containerRef });
+  }, { scope: containerRef, dependencies: [activeTab] });
 
   return (
     <div ref={containerRef} className="min-h-screen bg-gradient-to-tr from-sky-50/60 via-teal-50/20 to-indigo-50/30 text-slate-800 font-sans flex relative overflow-hidden antialiased pt-16">

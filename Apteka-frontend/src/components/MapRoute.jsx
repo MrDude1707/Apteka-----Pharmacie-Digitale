@@ -52,7 +52,7 @@ export default function MapRoute({ pharmacies, stocks, patientLocation, onPatien
   }, [patientLocation, pharmacies]);
 
   useEffect(() => {
-    if (!patientLocation || !selectedPharma) return setDirections(null);
+    if (!isLoaded || !window.google || !patientLocation || !selectedPharma) return setDirections(null);
     const directionsService = new window.google.maps.DirectionsService();
     directionsService.route(
       { origin: patientLocation, destination: { lat: selectedPharma.latitude, lng: selectedPharma.longitude }, travelMode: 'DRIVING' },
@@ -64,7 +64,7 @@ export default function MapRoute({ pharmacies, stocks, patientLocation, onPatien
         }
       }
     );
-  }, [patientLocation, selectedPharma]);
+  }, [isLoaded, patientLocation, selectedPharma]);
 
   useEffect(() => {
     if (nearestPharmacy) setSelectedPharma(nearestPharmacy);

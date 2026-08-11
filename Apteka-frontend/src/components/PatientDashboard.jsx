@@ -525,7 +525,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                       </p>
 
                       <div className="flex justify-between text-sm items-center mt-2 border-t border-slate-100 pt-3">
-                        <b className="text-teal-600 text-lg font-black">{stock.medicament.prix.toFixed(2)} €</b>
+                        <b className="text-teal-600 text-lg font-black">{(stock.medicament.prix || 0).toFixed(2)} €</b>
                         <button
                           onClick={() => {
                             if (cart.some(c => c.id === stock.id)) {
