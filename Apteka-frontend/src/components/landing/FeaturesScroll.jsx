@@ -1,161 +1,198 @@
-import React, { useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef, useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
-import { ClipboardList, Search, ShieldCheck, ArrowRight, Eye } from 'lucide-react';
+import { ClipboardList, ShieldAlert, Search, ShieldCheck, ShoppingCart } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
+const PROTOCOL_STEPS = [
+  {
+    num: "01",
+    title: "Diagnostic & Saisie",
+    role: "Médecin Agréé",
+    description: "Le parcours débute lors de la consultation. Le médecin certifié saisit l'ordonnance sur le registre officiel d'Apteka, en s'assurant de la compatibilité thérapeutique.",
+    icon: <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6 text-teal-400" />
+  },
+  {
+    num: "02",
+    title: "Chiffrement & Signature",
+    role: "Sécurisation Cryptographique",
+    description: "La feuille de soins numérique subit un hachage asymétrique scellé par l'Ordre National des Médecins. Un QR code d'accès unique et inviolable est crypté à la source.",
+    icon: <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6 text-teal-400" />
+  },
+  {
+    num: "03",
+    title: "Interopérabilité des Stocks",
+    role: "Réseau Officiel d'Officines",
+    description: "La plateforme interroge les serveurs sécurisés des pharmacies d'Antananarivo en temps réel pour localiser la molécule exacte sans que le patient n'ait à errer de garde en garde.",
+    icon: <Search className="w-5 h-5 sm:w-6 sm:h-6 text-teal-400" />
+  },
+  {
+    num: "04",
+    title: "Réservation Instantanée",
+    role: "Patient connecté",
+    description: "Le patient consulte la carte, choisit sa pharmacie de confiance détenant le produit, et bloque instantanément son traitement pour en garantir la disponibilité physique.",
+    icon: <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-teal-400" />
+  },
+  {
+    num: "05",
+    title: "Scan & Délivrance Légale",
+    role: "Pharmacien Certifié",
+    description: "À l'officine, le pharmacien scanne le QR code, authentifie l'ordonnance numérique cryptée, délivre la boîte scellée officielle, et l'ordonnance passe à l'état 'honoré'.",
+    icon: <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-teal-400" />
+  }
+];
+
 export default function FeaturesScroll() {
   const containerRef = useRef(null);
+  const pinContainerRef = useRef(null);
+  const [progress, setProgress] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
 
+  // Détection responsive pour basculer la position de l'arc (bas sur mobile, droite sur desktop)
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1024);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
   useGSAP(() => {
-    // Fade in section title and subtitle
-    gsap.fromTo('.features-header', 
-      { opacity: 0, y: 30 },
-      { 
-        opacity: 1, 
-        y: 0, 
-        duration: 0.8,
-        scrollTrigger: {
-          trigger: '.features-header',
-          start: 'top 85%',
-          toggleActions: 'play none none reverse'
-        }
-      }
-    );
-
-    // Stagger feature cards sliding in from below with a 3D rotate
-    gsap.fromTo('.feature-card',
-      { opacity: 0, y: 80, rotateX: -10 },
-      {
-        opacity: 1,
-        y: 0,
-        rotateX: 0,
-        duration: 0.9,
-        stagger: 0.2,
-        ease: 'power2.out',
-        scrollTrigger: {
-          trigger: '.feature-cards-grid',
-          start: 'top 80%',
-          toggleActions: 'play none none reverse'
-        }
-      }
-    );
-
-    // Subtle continuous parallax on individual graphic blobs
-    gsap.to('.parallax-blob-1', {
-      y: -50,
-      ease: 'none',
+    const animProxy = { val: 0 };
+    gsap.to(animProxy, {
+      val: 1,
+      ease: "none",
       scrollTrigger: {
         trigger: containerRef.current,
-        start: 'top bottom',
-        end: 'bottom top',
-        scrub: true
-      }
-    });
-
-    gsap.to('.parallax-blob-2', {
-      y: 50,
-      ease: 'none',
-      scrollTrigger: {
-        trigger: containerRef.current,
-        start: 'top bottom',
-        end: 'bottom top',
-        scrub: true
-      }
+        start: "top top",
+        end: "bottom bottom",
+        pin: pinContainerRef.current,
+        pinSpacing: false,
+        scrub: 0.8, // Inertie fluide haut de gamme
+      },
+      onUpdate: () => setProgress(animProxy.val)
     });
   }, { scope: containerRef });
 
-  const steps = [
-    {
-      num: "01",
-      title: "Consultation & Ordonnance",
-      desc: "Le médecin agréé rédige l'ordonnance électroniquement. Un QR Code crypté unique (ORD-XXXX) est généré instantanément dans votre espace sécurisé.",
-      icon: <ClipboardList className="w-8 h-8 text-teal-600" />,
-      color: "from-teal-500/10 to-teal-500/0",
-      accent: "teal"
-    },
-    {
-      num: "02",
-      title: "Recherche de Stocks",
-      desc: "Recherchez vos médicaments en un clic. Repérez immédiatement sur notre carte interactive les pharmacies les plus proches disposant du stock requis.",
-      icon: <Search className="w-8 h-8 text-sky-600" />,
-      color: "from-sky-500/10 to-sky-500/0",
-      accent: "sky"
-    },
-    {
-      num: "03",
-      title: "Délivrance Sécurisée",
-      desc: "Présentez votre QR Code chez le pharmacien. L'officine scanne le code pour vérifier l'authenticité de la prescription et déduit automatiquement le stock.",
-      icon: <ShieldCheck className="w-8 h-8 text-indigo-600" />,
-      color: "from-indigo-500/10 to-indigo-500/0",
-      accent: "indigo"
-    }
-  ];
-
+  const activeStep = Math.min(4, Math.max(0, Math.round(progress * 4)));
+  
+  // Mathématiques de positionnement polaire
+  // Sur mobile, l'élément actif est en haut (270°). Sur desktop, à gauche (180°).
+  const activeAngle = isMobile ? 270 : 180; 
+  const spacingAngle = isMobile ? 24 : 26;
+  const totalRotation = 4 * spacingAngle;
+  
   return (
-    <section ref={containerRef} id="features" className="relative py-24 px-6 sm:px-12 md:px-16 overflow-hidden bg-slate-50/50">
-      
-      {/* Dynamic parallax background blobs */}
-      <div className="absolute top-[20%] left-[-5%] w-[35vw] h-[35vw] bg-teal-100/30 rounded-full blur-[100px] parallax-blob-1 pointer-events-none" />
-      <div className="absolute bottom-[20%] right-[-5%] w-[40vw] h-[40vw] bg-sky-100/30 rounded-full blur-[120px] parallax-blob-2 pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto relative z-10">
+    <section ref={containerRef} id="features" className="relative h-[400vh] bg-[#09090b] text-white">
+      {/* Conteneur collant plein écran */}
+      <div ref={pinContainerRef} className="sticky top-0 h-screen w-full overflow-hidden flex flex-col lg:flex-row items-center">
         
-        {/* Section Header */}
-        <div className="features-header text-center max-w-2xl mx-auto mb-20">
-          <span className="text-xs font-bold text-teal-600 uppercase tracking-widest bg-teal-50 px-4 py-1.5 rounded-full">Comment ça marche ?</span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight mt-4 mb-6">
-            Un parcours de soins <br className="hidden sm:block" />
-            <span className="bg-gradient-to-r from-teal-600 to-sky-600 bg-clip-text text-transparent">totalement dématérialisé</span>
-          </h2>
-          <p className="text-base text-slate-500 font-semibold leading-relaxed">
-            Apteka simplifie le parcours de soins en reliant instantanément les patients, les médecins agréés et les officines officielles. Suivez vos stocks en direct et sécurisez vos ordonnances.
-          </p>
-        </div>
+        {/* LA COURBE (DROITE OU BAS) - Reproduction exacte de l'arc latéral MyHealthPrac */}
+        <div 
+          className={`absolute pointer-events-none transition-all duration-700 ${
+            isMobile 
+              ? "top-[90%] left-1/2 w-[180vw] h-[180vw]" 
+              : "top-1/2 right-0 w-[120vh] h-[120vh] lg:w-[1100px] lg:h-[1100px]"
+          }`}
+          style={{
+            transform: isMobile ? 'translate(-50%, -50%)' : 'translate(50%, -50%)'
+          }}
+        >
+          {/* Lignes de tracé géométriques */}
+          <div className="absolute inset-0 rounded-full border border-zinc-800/80 shadow-[inset_0_0_100px_rgba(20,184,166,0.02)]" />
+          <div className={`absolute rounded-full border border-zinc-900/50 ${isMobile ? "inset-[40px]" : "inset-[60px]"}`} />
 
-        {/* Feature Cards Grid */}
-        <div className="feature-cards-grid grid grid-cols-1 md:grid-cols-3 gap-8">
-          {steps.map((step, idx) => (
-            <div
-              key={idx}
-              className="feature-card group bg-white/60 backdrop-blur-xl border border-slate-200/50 rounded-3xl p-8 shadow-sm hover:shadow-xl hover:shadow-sky-100/30 hover:border-slate-300/80 transition-all duration-300 flex flex-col justify-between min-h-[380px] relative overflow-hidden"
-              style={{ perspective: 1000 }}
-            >
-              {/* Dynamic top gradient cover */}
-              <div className={`absolute top-0 left-0 right-0 h-2 bg-gradient-to-r ${step.accent === 'teal' ? 'from-teal-500 to-teal-400' : step.accent === 'sky' ? 'from-sky-500 to-sky-400' : 'from-indigo-500 to-indigo-400'}`} />
-              
-              <div>
-                {/* Number & Icon header */}
-                <div className="flex items-center justify-between mb-8">
-                  <div className="text-4xl font-black text-slate-200/80 group-hover:text-teal-500/20 transition-colors duration-300">
+          {/* Points orbitaux calculés dynamiquement */}
+          {PROTOCOL_STEPS.map((step, i) => {
+            const currentAngle = activeAngle - (i * spacingAngle) + (progress * totalRotation);
+            const rad = (currentAngle * Math.PI) / 180;
+            const x = 50 + 50 * Math.cos(rad);
+            const y = 50 + 50 * Math.sin(rad);
+            const isActive = activeStep === i;
+
+            return (
+              <div
+                key={i}
+                className="absolute flex items-center justify-center"
+                style={{
+                  left: `${x}%`,
+                  top: `${y}%`,
+                  transform: 'translate(-50%, -50%)',
+                }}
+              >
+                <div className={`relative flex items-center justify-center rounded-full transition-all duration-500 ease-out ${
+                  isActive 
+                    ? 'w-14 h-14 sm:w-16 sm:h-16 bg-[#09090b] border-2 border-teal-500 shadow-[0_0_35px_rgba(20,184,166,0.25)] scale-110'
+                    : 'w-10 h-10 sm:w-12 sm:h-12 bg-[#09090b] border border-zinc-800/80 opacity-40 scale-90'
+                }`}>
+                  <span className={`font-mono text-base sm:text-lg font-black ${isActive ? 'text-teal-400' : 'text-zinc-600'}`}>
                     {step.num}
-                  </div>
-                  <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 group-hover:scale-110 transition-transform duration-300">
-                    {step.icon}
-                  </div>
+                  </span>
+                  
+                  {/* Libellé tangent exclusif au bureau pour l'immersion */}
+                  {!isMobile && (
+                    <div className={`absolute right-[calc(100%+1.5rem)] whitespace-nowrap transition-all duration-500 ${
+                      isActive ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
+                    }`}>
+                      <span className="text-xl font-bold text-white tracking-tight">{step.title}</span>
+                    </div>
+                  )}
                 </div>
-
-                {/* Card Title */}
-                <h3 className="text-xl font-bold text-slate-800 tracking-tight mb-4 group-hover:text-teal-600 transition-colors duration-300">
-                  {step.title}
-                </h3>
-
-                {/* Card Description */}
-                <p className="text-sm text-slate-500 leading-relaxed font-semibold">
-                  {step.desc}
-                </p>
               </div>
-
-              {/* Decorative subtle hover element */}
-              <div className="mt-8 flex items-center gap-2 text-xs font-bold text-teal-600 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-[-10px] group-hover:translate-x-0">
-                En savoir plus
-                <ArrowRight size={14} />
-              </div>
+            );
+          })}
+        </div>
+        
+        {/* BLOC TEXTE (GAUCHE OU HAUT) */}
+        <div className="w-full h-full max-w-7xl mx-auto px-6 sm:px-12 relative z-10 flex flex-col justify-start pt-[12vh] lg:pt-0 lg:justify-center">
+          <div className="w-full lg:w-5/12 xl:w-1/2 flex flex-col items-center lg:items-start text-center lg:text-left">
+            
+            {/* En-tête de section figé */}
+            <div className="mb-10 lg:mb-16">
+              <span className="text-teal-500 font-extrabold uppercase tracking-widest text-[10px] sm:text-xs bg-teal-500/10 px-3 py-1.5 rounded-full border border-teal-500/20">
+                Le Protocole Apteka
+              </span>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-white leading-[1.1] mt-6">
+                Un parcours unifié,<br className="hidden sm:block" />
+                <span className="text-zinc-500">traçable au millimètre.</span>
+              </h2>
             </div>
-          ))}
+            
+            {/* Description dynamique animée par l'étape */}
+            <div className="relative h-[280px] w-full max-w-lg">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeStep}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="flex flex-col items-center lg:items-start"
+                >
+                  <div className="flex flex-col lg:flex-row items-center lg:items-start gap-4 mb-6 text-center lg:text-left">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-teal-400 shrink-0">
+                      {PROTOCOL_STEPS[activeStep].icon}
+                    </div>
+                    <div className="mt-2 lg:mt-0">
+                      <span className="text-[9px] sm:text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-1">
+                        {PROTOCOL_STEPS[activeStep].role}
+                      </span>
+                      <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                        {PROTOCOL_STEPS[activeStep].title}
+                      </h3>
+                    </div>
+                  </div>
+                  
+                  <p className="text-zinc-400 text-sm sm:text-base md:text-lg font-medium leading-relaxed">
+                    {PROTOCOL_STEPS[activeStep].description}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+            
+          </div>
         </div>
 
       </div>
