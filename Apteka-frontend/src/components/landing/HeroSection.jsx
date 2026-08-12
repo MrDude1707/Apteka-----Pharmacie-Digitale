@@ -39,15 +39,15 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick, handleQ
   }, { scope: containerRef });
 
   return (
-    <section ref={containerRef} className="relative min-h-screen flex items-center justify-center pt-24 pb-12 px-6 sm:px-12 md:px-16 overflow-hidden bg-gradient-to-tr from-sky-50/70 via-teal-50/30 to-indigo-50/40">
+    <section ref={containerRef} className="relative min-h-screen flex items-center justify-center pt-24 pb-12 px-6 sm:px-12 md:px-16 overflow-hidden bg-mhp-dark">
       
-      {/* Aurora Ambient Glow Effects (Light Mode) */}
-      <div className="absolute top-[10%] left-[-10%] w-[45vw] h-[45vw] bg-teal-200/20 rounded-full blur-[120px] ambient-glow pointer-events-none" />
-      <div className="absolute bottom-[10%] right-[-10%] w-[50vw] h-[55vw] bg-sky-200/30 rounded-full blur-[140px] ambient-glow pointer-events-none" />
-      <div className="absolute top-[40%] left-[30%] w-[30vw] h-[30vw] bg-indigo-200/15 rounded-full blur-[100px] ambient-glow pointer-events-none" />
+      {/* Aurora Ambient Glow Effects (Dark Mode) */}
+      <div className="absolute top-[10%] left-[-10%] w-[45vw] h-[45vw] bg-teal-500/5 rounded-full blur-[120px] ambient-glow pointer-events-none" />
+      <div className="absolute bottom-[10%] right-[-10%] w-[50vw] h-[55vw] bg-cyan-500/5 rounded-full blur-[140px] ambient-glow pointer-events-none" />
+      <div className="absolute top-[40%] left-[30%] w-[30vw] h-[30vw] bg-indigo-500/5 rounded-full blur-[100px] ambient-glow pointer-events-none" />
 
       {/* Decorative Grid Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0284c705_1px,transparent_1px),linear-gradient(to_bottom,#0284c705_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
         
@@ -55,64 +55,64 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick, handleQ
         <div ref={textRef} className="lg:col-span-7 text-left flex flex-col justify-center">
           
           {/* Tagline Badge */}
-          <div className="hero-fade-up flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-md border border-white/80 w-fit shadow-sm shadow-sky-100/30 mb-6">
+          <div className="hero-fade-up flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/60 backdrop-blur-md border border-zinc-800/80 w-fit shadow-lg mb-6">
             <span className="flex h-2.5 w-2.5 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500"></span>
             </span>
-            <span className="text-xs font-bold text-teal-800 uppercase tracking-wider">Plateforme Agréée - Madagascar</span>
+            <span className="text-xs font-bold text-teal-400 uppercase tracking-wider">Plateforme Agréée - Madagascar</span>
           </div>
 
           {/* Primary Heading */}
-          <h1 className="hero-fade-up text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 leading-[1.1] tracking-tight mb-6">
-            Votre santé connectée, <br />
-            <span className="bg-gradient-to-r from-teal-600 via-sky-600 to-indigo-600 bg-clip-text text-transparent">
-              en toute confiance.
+          <h1 className="hero-fade-up text-4xl sm:text-5xl md:text-6xl font-black text-white leading-[1.1] tracking-tight mb-6">
+            La prescription sécurisée, <br />
+            <span className="bg-gradient-to-r from-teal-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent">
+              sans circuit informel.
             </span>
           </h1>
 
           {/* Paragraph */}
-          <p className="hero-fade-up text-lg text-slate-600 font-medium max-w-xl leading-relaxed mb-8">
-            Apteka connecte instantanément les patients de Madagascar aux médecins certifiés et aux pharmacies officielles. Vérifiez les stocks en temps réel, obtenez vos ordonnances sécurisées et faites-vous livrer en toute sérénité.
+          <p className="hero-fade-up text-base sm:text-lg text-zinc-400 font-medium max-w-xl leading-relaxed mb-8">
+            Face aux risques de contrefaçons et aux errances de recherche de stocks à Antananarivo, Apteka numérise la chaîne de délivrance médicale. Suivi d'inventaires en temps réel, ordonnances chiffrées infalsifiables et distribution officielle agréée.
           </p>
 
           {/* Action Buttons */}
           <div ref={buttonsRef} className="hero-fade-up flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-10">
             <button
               onClick={onConnectClick}
-              className="group px-8 py-4 rounded-2xl bg-gradient-to-r from-teal-500 to-sky-500 text-white font-bold shadow-lg shadow-teal-500/20 hover:shadow-xl hover:shadow-teal-500/30 hover:-translate-y-0.5 transition-all text-base tracking-wide flex items-center justify-center gap-2 cursor-pointer"
+              className="group px-8 py-4 rounded-2xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold shadow-lg shadow-teal-500/10 hover:shadow-xl hover:shadow-teal-500/20 hover:-translate-y-0.5 transition-all text-base tracking-wide flex items-center justify-center gap-2 cursor-pointer"
             >
-              Accéder à mon Espace
+              Accéder au Portail Clinique
               <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
             </button>
             
             <button
               onClick={onHowItWorksClick}
-              className="px-8 py-4 rounded-2xl bg-white/70 backdrop-blur-md border border-slate-200/80 hover:bg-slate-50 text-slate-800 font-bold transition-all text-base flex items-center justify-center gap-2 cursor-pointer"
+              className="px-8 py-4 rounded-2xl bg-zinc-900/60 backdrop-blur-md border border-zinc-800/80 hover:bg-zinc-800 hover:text-white text-zinc-300 font-bold transition-all text-base flex items-center justify-center gap-2 cursor-pointer"
             >
-              Découvrir Apteka
+              Consulter les Protocoles
             </button>
           </div>
 
           {/* Inline Trust Badges */}
-          <div ref={badgesRef} className="hero-fade-up grid grid-cols-2 gap-4 border-t border-slate-200/60 pt-8 max-w-md">
+          <div ref={badgesRef} className="hero-fade-up grid grid-cols-2 gap-4 border-t border-zinc-800/60 pt-8 max-w-md">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-teal-500/10 text-teal-600 rounded-xl">
+              <div className="p-2.5 bg-teal-500/10 text-teal-400 rounded-xl">
                 <ShieldCheck size={20} />
               </div>
               <div>
-                <h4 className="text-sm font-extrabold text-slate-800">100% Sécurisé</h4>
-                <p className="text-xs font-semibold text-slate-500">Données cryptées</p>
+                <h4 className="text-sm font-extrabold text-zinc-200">Traçabilité Chiffrée</h4>
+                <p className="text-xs font-semibold text-zinc-500">Signatures cryptographiques</p>
               </div>
             </div>
             
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-sky-500/10 text-sky-600 rounded-xl">
+              <div className="p-2.5 bg-cyan-500/10 text-cyan-400 rounded-xl">
                 <HeartPulse size={20} />
               </div>
               <div>
-                <h4 className="text-sm font-extrabold text-slate-800">Pharmacies Officielles</h4>
-                <p className="text-xs font-semibold text-slate-500">Stocks agréés</p>
+                <h4 className="text-sm font-extrabold text-zinc-200">Officines Agréées MSP</h4>
+                <p className="text-xs font-semibold text-zinc-500">Flux d'inventaires officiels</p>
               </div>
             </div>
           </div>
@@ -121,9 +121,9 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick, handleQ
           <div className="hero-fade-up mt-6">
             <button 
               onClick={handleQuickDemoLogin}
-              className="text-xs font-bold text-sky-600 hover:text-sky-700 underline underline-offset-4 flex items-center gap-1.5"
+              className="text-xs font-bold text-cyan-450 hover:text-cyan-300 underline underline-offset-4 flex items-center gap-1.5"
             >
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
               Tester rapidement avec des comptes démo
             </button>
           </div>
@@ -137,17 +137,17 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick, handleQ
           </div>
           
           {/* Extra depth circle lights behind the 3D canvas */}
-          <div className="absolute top-[20%] right-[10%] w-64 h-64 bg-teal-400/10 rounded-full blur-[80px] -z-10" />
-          <div className="absolute bottom-[20%] left-[10%] w-64 h-64 bg-sky-400/10 rounded-full blur-[80px] -z-10" />
+          <div className="absolute top-[20%] right-[10%] w-64 h-64 bg-teal-500/5 rounded-full blur-[80px] -z-10" />
+          <div className="absolute bottom-[20%] left-[10%] w-64 h-64 bg-cyan-500/5 rounded-full blur-[80px] -z-10" />
         </div>
 
       </div>
 
       {/* Floating Scroll Indicator */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none opacity-60">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Faire défiler</span>
-        <div className="w-5 h-8 rounded-full border-2 border-slate-300 flex justify-center p-1">
-          <div className="w-1.5 h-2 bg-teal-500 rounded-full animate-bounce" />
+        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Faire défiler</span>
+        <div className="w-5 h-8 rounded-full border-2 border-zinc-700 flex justify-center p-1">
+          <div className="w-1.5 h-2 bg-teal-400 rounded-full animate-bounce" />
         </div>
       </div>
 

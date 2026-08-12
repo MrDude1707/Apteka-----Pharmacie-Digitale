@@ -3,14 +3,57 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Float, OrbitControls, ContactShadows, PresentationControls } from '@react-three/drei';
 import * as THREE from 'three';
 
+// A single medicine granule floating inside the translucent capsule half
+function Granule({ data }) {
+  const meshRef = useRef();
+  
+  useFrame((state) => {
+    if (meshRef.current) {
+      const time = state.clock.getElapsedTime() * data.speed;
+      meshRef.current.position.y = data.position[1] + Math.sin(time + data.offset) * 0.08;
+      meshRef.current.position.x = data.position[0] + Math.cos(time + data.offset) * 0.03;
+      meshRef.current.position.z = data.position[2] + Math.sin(time * 0.5 + data.offset) * 0.03;
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} position={data.position}>
+      <sphereGeometry args={[data.size, 16, 16]} />
+      <meshStandardMaterial 
+        color={data.color} 
+        roughness={0.15} 
+        metalness={0.1}
+        emissive={data.color === '#2dd4bf' ? '#0f766e' : '#000000'}
+        emissiveIntensity={0.25}
+      />
+    </mesh>
+  );
+}
+
 // A beautifully crafted, interactive 3D Capsule (Pill)
 function InteractiveCapsule() {
   const groupRef = useRef();
   const topHalfRef = useRef();
   const bottomHalfRef = useRef();
 
-  // Track cursor position to tilt the pill subtly
-  const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  // Generate medicine granules inside the transparent upper half
+  const granules = useMemo(() => {
+    const arr = [];
+    for (let i = 0; i < 16; i++) {
+      arr.push({
+        position: [
+          (Math.random() - 0.5) * 0.42,
+          0.1 + Math.random() * 0.85, // distribute within the top half
+          (Math.random() - 0.5) * 0.42,
+        ],
+        size: Math.random() * 0.05 + 0.03,
+        speed: Math.random() * 0.4 + 0.4,
+        offset: Math.random() * Math.PI * 2,
+        color: i % 2 === 0 ? '#2dd4bf' : '#ffffff', // teal vs pure clinical white
+      });
+    }
+    return arr;
+  }, []);
 
   useFrame((state) => {
     // Subtle auto rotation
@@ -28,18 +71,25 @@ function InteractiveCapsule() {
 
   return (
     <group ref={groupRef} scale={1.2}>
+      {/* Floating inner granules (active pharmaceutical ingredients) */}
+      <group>
+        {granules.map((g, idx) => (
+          <Granule key={idx} data={g} />
+        ))}
+      </group>
+
       {/* Pill Upper Half: Translucent Teal Glass */}
       <mesh ref={topHalfRef} position={[0, 0.5, 0]}>
         <cylinderGeometry args={[0.5, 0.5, 1, 32, 1, false]} />
         <meshPhysicalMaterial
           color="#06b6d4" // teal
-          roughness={0.1}
-          metalness={0.1}
-          transmission={0.6}
-          thickness={0.5}
-          ior={1.5}
+          roughness={0.05} // ultra-smooth glass surface
+          metalness={0.05}
+          transmission={0.88} // highly transparent
+          thickness={0.8} // realistic glass wall thickness
+          ior={1.48} // medical plastic refraction index
           clearcoat={1.0}
-          clearcoatRoughness={0.1}
+          clearcoatRoughness={0.05}
         />
       </mesh>
       
@@ -48,13 +98,13 @@ function InteractiveCapsule() {
         <sphereGeometry args={[0.5, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshPhysicalMaterial
           color="#06b6d4"
-          roughness={0.1}
-          metalness={0.1}
-          transmission={0.6}
-          thickness={0.5}
-          ior={1.5}
+          roughness={0.05}
+          metalness={0.05}
+          transmission={0.88}
+          thickness={0.8}
+          ior={1.48}
           clearcoat={1.0}
-          clearcoatRoughness={0.1}
+          clearcoatRoughness={0.05}
         />
       </mesh>
 
@@ -62,9 +112,9 @@ function InteractiveCapsule() {
       <mesh ref={bottomHalfRef} position={[0, -0.5, 0]}>
         <cylinderGeometry args={[0.5, 0.5, 1, 32, 1, false]} />
         <meshStandardMaterial
-          color="#e2e8f0" // slate-200 / medical white
-          roughness={0.2}
-          metalness={0.8}
+          color="#f1f5f9" // medical pure slate-100 white
+          roughness={0.15}
+          metalness={0.4}
         />
       </mesh>
       
@@ -72,9 +122,9 @@ function InteractiveCapsule() {
       <mesh position={[0, -1, 0]} rotation={[Math.PI, 0, 0]}>
         <sphereGeometry args={[0.5, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshStandardMaterial
-          color="#e2e8f0"
-          roughness={0.2}
-          metalness={0.8}
+          color="#f1f5f9"
+          roughness={0.15}
+          metalness={0.4}
         />
       </mesh>
 

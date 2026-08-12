@@ -1,23 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", -apple-system, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", -apple-system, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
-  --color-apple-blue: #10b981;
-  --color-apple-blueHover: #059669;
-  --color-apple-green: #34c759;
-  --color-apple-dark: #1d1d1f;
-  --color-apple-lightGrey: #f5f5f7;
-  --color-apple-border: #e2e2e7;
-  --color-apple-charcoal: #424245;
-  --shadow-appleCard: 0 4px 30px rgba(0, 0, 0, 0.03);
-  --shadow-applePop: 0 12px 40px rgba(0, 0, 0, 0.08);
+  --color-mhp-dark: #09090b;
+  --color-mhp-card-dark: #121215;
+  --color-mhp-light: #f8f9fa;
+  --color-mhp-card-light: #ffffff;
+  --color-mhp-teal: #0d9488;
+  --color-mhp-teal-hover: #0f766e;
+  --color-mhp-amber: #d97706;
+  --color-mhp-border-light: #e4e4e7;
+  --color-mhp-border-dark: #27272a;
+  
+  --color-apple-blue: #0d9488;
+  --color-apple-blueHover: #0f766e;
+  --color-apple-green: #10b981;
+  --color-apple-dark: #09090b;
+  --color-apple-lightGrey: #f8f9fa;
+  --color-apple-border: #e4e4e7;
+  --color-apple-charcoal: #18181b;
+  --shadow-appleCard: 0 4px 30px rgba(0, 0, 0, 0.02);
+  --shadow-applePop: 0 12px 40px rgba(0, 0, 0, 0.06);
 }
 
 body {
-  background-color: var(--color-apple-lightGrey);
-  color: var(--color-apple-dark);
+  background-color: var(--color-mhp-light);
+  color: var(--color-mhp-dark);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -242,4 +252,183 @@ body {
 /* Micro-shadow transition */
 .transition-smooth {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==============================================
+   DARK HIGH-TECH DASHBOARD SYSTEM OVERRIDES
+   ============================================== */
+.dashboard-root {
+  /* Dynamic Background Card Overrides */
+  .bg-white\/50, .bg-white, .bg-slate-50, .bg-slate-50\/50, .bg-slate-100\/40, .bg-teal-500\/5 {
+    background-color: rgba(18, 18, 24, 0.75) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border-color: rgba(39, 39, 45, 0.8) !important;
+  }
+
+  /* Specific color adjustments for elements inside dark dashboard cards */
+  .text-slate-800, .text-slate-900, .text-slate-700, .text-slate-850 {
+    color: #f4f4f5 !important; /* Zinc-100 */
+  }
+  .text-slate-600, .text-slate-500, .text-slate-550 {
+    color: #a1a1aa !important; /* Zinc-400 */
+  }
+  .text-slate-400 {
+    color: #71717a !important; /* Zinc-500 */
+  }
+
+  /* Dynamic Border Overrides */
+  .border-slate-100, .border-slate-200, .border-slate-200\/50, .border-slate-200\/40, .border-slate-200\/60, .border-teal-500\/10, .border-teal-500\/20 {
+    border-color: rgba(39, 39, 45, 0.85) !important;
+  }
+
+  /* Forms & Interactive Fields */
+  input[type="text"], input[type="number"], input[type="email"], input[type="password"], select, textarea {
+    background-color: #0c0c0e !important;
+    color: #f4f4f5 !important;
+    border-color: rgba(39, 39, 45, 0.85) !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  }
+  
+  input:focus, select:focus, textarea:focus {
+    border-color: #0d9488 !important; /* Teal-500 */
+    box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15) !important;
+  }
+
+  option {
+    background-color: #121215 !important;
+    color: #f4f4f5 !important;
+  }
+
+  /* Tables and Lists */
+  thead, .bg-slate-50\/80 {
+    background-color: rgba(9, 9, 11, 0.6) !important;
+  }
+
+  tr {
+    border-bottom-color: rgba(39, 39, 45, 0.6) !important;
+  }
+
+  tr:hover {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+  }
+
+  /* QR code card overrides */
+  .bg-white.p-3.shadow-inner, .bg-white.p-4.rounded-2xl {
+    background-color: #ffffff !important; /* Keep the QR code container background white so scanner works, but handle text inside */
+    * {
+      color: #09090b !important;
+    }
+  }
+
+  /* Special Leaflet Popup Styles in Dashboards */
+  .leaflet-popup-content-wrapper {
+    background-color: rgba(18, 18, 24, 0.95) !important;
+    border: 1px solid rgba(39, 39, 45, 0.8) !important;
+    color: #f4f4f5 !important;
+    backdrop-filter: blur(12px) !important;
+  }
+
+  .leaflet-popup-tip {
+    background-color: rgba(18, 18, 24, 0.95) !important;
+  }
+
+  /* Scrollbar Styles */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgba(9, 9, 11, 0.3);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(39, 39, 45, 0.8);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(13, 148, 136, 0.5);
+  }
+}
+
+/* ==============================================
+   DARK HIGH-TECH AUTH SECTION OVERRIDES
+   ============================================== */
+.auth-section {
+  /* Headings & Text */
+  h2, h3, .text-apple-dark {
+    color: #ffffff !important;
+  }
+  
+  p, .text-apple-charcoal {
+    color: #a1a1aa !important; /* zinc-400 */
+  }
+
+  /* Form Labels */
+  label {
+    color: #71717a !important; /* zinc-500 */
+    font-weight: 700 !important;
+  }
+
+  /* Text inputs, select & textarea */
+  input[type="text"], input[type="email"], input[type="password"], input[type="number"], select, textarea {
+    background-color: rgba(9, 9, 11, 0.8) !important;
+    color: #f4f4f5 !important;
+    border-color: rgba(63, 63, 70, 0.4) !important; /* zinc-700/40 */
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: #0d9488 !important; /* teal-500 */
+    box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2) !important;
+  }
+
+  /* Dropdown selector background */
+  option {
+    background-color: #09090b !important;
+    color: #f4f4f5 !important;
+  }
+
+  /* Icon indicators */
+  .text-apple-charcoal\/50 {
+    color: rgba(161, 161, 170, 0.5) !important;
+  }
+
+  /* Role Selection Grid */
+  .bg-apple-lightGrey {
+    background-color: rgba(9, 9, 11, 0.6) !important;
+    border-color: rgba(63, 63, 70, 0.3) !important;
+  }
+
+  .bg-apple-lightGrey button {
+    color: #a1a1aa !important;
+  }
+
+  .bg-apple-lightGrey button.bg-white {
+    background-color: #0d9488 !important; /* Active teal color */
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25) !important;
+  }
+
+  /* Action buttons */
+  .bg-apple-blue {
+    background-color: #0d9488 !important;
+    color: #ffffff !important;
+  }
+
+  .bg-apple-blue:hover {
+    background-color: #0f766e !important;
+  }
+
+  /* Secondary interactive text links */
+  .text-apple-blue {
+    color: #2dd4bf !important; /* teal-400 */
+  }
+
+  .text-apple-blue:hover {
+    color: #14b8a6 !important; /* teal-500 */
+  }
+
+  /* Divider border */
+  .border-apple-border\/30 {
+    border-color: rgba(63, 63, 70, 0.4) !important;
+  }
 }
