@@ -1,8 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, MessageCircleQuestion } from 'lucide-react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const FAQS = [
   {
@@ -27,21 +30,35 @@ const FAQS = [
   }
 ];
 
-function FAQItem({ question, answer, isOpen, onToggle }) {
+function FAQItem({ question, answer, isOpen, onToggle, index }) {
   return (
-    <div className="border-b border-zinc-800/60 py-5 last:border-0">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.5, delay: index * 0.1 }}
+      className={`mb-4 rounded-2xl border transition-all duration-300 overflow-hidden ${
+        isOpen 
+          ? 'bg-zinc-900/80 border-teal-500/30 shadow-[0_0_30px_rgba(20,184,166,0.1)]' 
+          : 'bg-zinc-900/30 border-zinc-800/60 hover:bg-zinc-900/50 hover:border-zinc-700/80'
+      }`}
+    >
       <button
         onClick={onToggle}
-        className="flex justify-between items-center w-full text-left font-bold text-zinc-100 text-lg hover:text-teal-400 transition-colors py-2 focus:outline-none cursor-pointer"
+        className="flex justify-between items-center w-full text-left p-6 sm:p-8 focus:outline-none cursor-pointer"
         aria-expanded={isOpen}
       >
-        <span className="pr-4">{question}</span>
+        <span className={`font-bold text-lg sm:text-xl transition-colors duration-300 pr-4 ${isOpen ? 'text-teal-400' : 'text-zinc-100'}`}>
+          {question}
+        </span>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.3 }}
-          className="text-teal-400 flex-shrink-0"
+          className={`flex-shrink-0 p-2.5 rounded-full transition-colors duration-300 ${
+            isOpen ? 'bg-teal-500/20 text-teal-400' : 'bg-zinc-800/50 text-zinc-400'
+          }`}
         >
-          <ChevronDown size={22} />
+          <ChevronDown size={20} />
         </motion.div>
       </button>
       <AnimatePresence initial={false}>
@@ -51,83 +68,90 @@ function FAQItem({ question, answer, isOpen, onToggle }) {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden"
           >
-            <p className="text-zinc-400 font-medium leading-relaxed mt-3 pr-8 text-[15px]">
-              {answer}
-            </p>
+            <div className="px-6 sm:px-8 pb-6 sm:pb-8 pt-0">
+              <div className="w-full h-px bg-gradient-to-r from-teal-500/20 to-transparent mb-5"></div>
+              <p className="text-zinc-400 font-medium leading-relaxed text-[15px] sm:text-base">
+                {answer}
+              </p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
 
 export default function FAQSection() {
-  const [openIndex, setOpenIndex] = useState(null);
+  const [openIndex, setOpenIndex] = useState(0); // Premier élément ouvert par défaut
   const containerRef = useRef(null);
 
   useGSAP(() => {
-    gsap.fromTo('.faq-header', 
-      { opacity: 0, y: 30 },
+    gsap.fromTo('.faq-left-col', 
+      { opacity: 0, x: -40 },
       { 
         opacity: 1, 
-        y: 0, 
+        x: 0, 
         duration: 0.8,
         scrollTrigger: {
-          trigger: '.faq-header',
-          start: 'top 85%',
-          toggleActions: 'play none none reverse'
-        }
-      }
-    );
-
-    gsap.fromTo('.faq-item-list', 
-      { opacity: 0, y: 40 },
-      { 
-        opacity: 1, 
-        y: 0, 
-        duration: 0.8,
-        scrollTrigger: {
-          trigger: '.faq-item-list',
-          start: 'top 80%',
-          toggleActions: 'play none none reverse'
+          trigger: containerRef.current,
+          start: 'top 75%',
         }
       }
     );
   }, { scope: containerRef });
 
   return (
-    <section ref={containerRef} id="faq" className="py-32 px-6 sm:px-12 md:px-16 bg-mhp-dark overflow-hidden relative border-t border-zinc-900/60">
-      <div className="absolute top-[10%] right-[-10%] w-[35vw] h-[35vw] bg-teal-500/5 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[10%] left-[-10%] w-[35vw] h-[35vw] bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none" />
+    <section ref={containerRef} id="faq" className="py-24 sm:py-32 px-6 sm:px-12 md:px-16 bg-mhp-dark relative overflow-hidden border-t border-zinc-900/60">
+      {/* Background glow effects */}
+      <div className="absolute top-[20%] left-[-10%] w-[40vw] h-[40vw] bg-teal-500/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-cyan-500/5 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="max-w-4xl mx-auto relative z-10">
-        
-        {/* Section Header */}
-        <div className="faq-header text-center mb-20">
-          <span className="text-xs font-bold text-teal-400 uppercase tracking-widest bg-teal-950/40 border border-teal-800/40 px-4 py-1.5 rounded-full">FAQ</span>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mt-6 mb-6">
-            Questions <span className="bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Fréquentes</span>
-          </h2>
-          <p className="text-base text-zinc-400 font-semibold leading-relaxed max-w-xl mx-auto">
-            Trouvez rapidement des réponses aux questions les plus courantes concernant la plateforme d'authentification et de prescription médicale Apteka.
-          </p>
+      <div className="max-w-7xl mx-auto relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-start">
+          
+          {/* Left Column: Sticky Header */}
+          <div className="faq-left-col lg:col-span-5 lg:sticky lg:top-32">
+            <div className="inline-flex items-center justify-center p-3.5 bg-teal-500/10 rounded-2xl border border-teal-500/20 mb-8 shadow-[0_0_30px_rgba(20,184,166,0.15)]">
+              <MessageCircleQuestion className="text-teal-400" size={32} />
+            </div>
+            
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight mb-6 leading-[1.1]">
+              Des questions ? <br/>
+              <span className="bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Nous avons les réponses.</span>
+            </h2>
+            
+            <p className="text-lg text-zinc-400 font-medium leading-relaxed mb-10 max-w-md">
+              Découvrez comment la plateforme Apteka sécurise vos prescriptions et modernise l'accès aux médicaments à Madagascar.
+            </p>
+
+            <div className="hidden lg:flex flex-col space-y-4 p-8 bg-zinc-900/40 border border-zinc-800/80 rounded-3xl backdrop-blur-sm relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <h3 className="text-white font-bold text-xl relative z-10">Vous ne trouvez pas votre réponse ?</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed relative z-10">Notre équipe de support est disponible pour les professionnels de santé et les patients.</p>
+              <button className="mt-4 bg-white text-zinc-950 font-bold py-3.5 px-8 rounded-full hover:bg-teal-50 hover:scale-105 transition-all duration-300 w-fit text-sm relative z-10 shadow-lg">
+                Contacter le support
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: FAQ Items */}
+          <div className="lg:col-span-7 pt-4 lg:pt-0">
+            <div className="space-y-4">
+              {FAQS.map((faq, index) => (
+                <FAQItem
+                  key={index}
+                  index={index}
+                  question={faq.question}
+                  answer={faq.answer}
+                  isOpen={openIndex === index}
+                  onToggle={() => setOpenIndex(openIndex === index ? null : index)}
+                />
+              ))}
+            </div>
+          </div>
+
         </div>
-
-        {/* FAQ list */}
-        <div className="faq-item-list bg-zinc-900/40 backdrop-blur-xl border border-zinc-800/80 rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl">
-          {FAQS.map((faq, index) => (
-            <FAQItem
-              key={index}
-              question={faq.question}
-              answer={faq.answer}
-              isOpen={openIndex === index}
-              onToggle={() => setOpenIndex(openIndex === index ? null : index)}
-            />
-          ))}
-        </div>
-
       </div>
     </section>
   );

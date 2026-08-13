@@ -39,7 +39,7 @@ const PILLARS = [
     title: "Conçue pour vous",
     subtitle: "Pas un protocole générique",
     description: "Chaque patient est unique. Apteka s'adapte à votre profil, vos prescriptions récurrentes et vos préférences d'officines pour vous offrir une expérience de soin sur-mesure.",
-    image: "https://images.unsplash.com/photo-1579684389782-64d84b5e901a?q=80&w=800&auto=format&fit=crop"
+    image: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800&auto=format&fit=crop"
   }
 ];
 
