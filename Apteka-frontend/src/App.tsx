@@ -5,7 +5,8 @@ import MapRoute from './components/MapRoute';
 import DoctorDashboard from './components/DoctorDashboard';
 import PharmacistDashboard from './components/PharmacistDashboard';
 import PatientDashboard from './components/PatientDashboard';
-import { Search, CheckCircle, ClipboardList, ShoppingCart, MessageCircle, FileText, Send, X, CreditCard, HeartPulse, Printer, Pill, Users, Check } from 'lucide-react';
+import DashboardLayout from './components/dashboard/DashboardLayout';
+import { Search, CheckCircle, ClipboardList, ShoppingCart, MessageCircle, FileText, Send, X, CreditCard, HeartPulse, Printer, Pill, Users, Check, LayoutGrid, RefreshCw } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { API_URL } from './config';
 
@@ -303,272 +304,309 @@ export default function App() {
     return <PatientDashboard user={user} activeTab={activeTab} setActiveTab={setActiveTab} />;
   }
 
+  const adminMenuItems = [
+    { id: 'admin_users', label: 'Comptes en attente', icon: ClipboardList },
+    { id: 'admin_all_users', label: 'Tous les comptes', icon: Users },
+    { id: 'admin_vitrine', label: 'Liaison Vitrines', icon: RefreshCw },
+    { id: 'admin_supervision', label: 'Supervision', icon: LayoutGrid }
+  ];
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+    window.location.reload();
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar user={user} onLogout={() => { localStorage.removeItem('token'); setUser(null); }} activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      <main className="flex-1 w-full max-w-7xl mx-auto py-6">
-        
-        {/* ADMIN: COMPTES EN ATTENTE D'APPROBATION */}
-        {activeTab === 'admin_users' && (
-          <div className="px-4 max-w-5xl mx-auto">
-            <div className="flex flex-col gap-2 mb-8 text-left">
-              <span className="text-xs font-bold text-amber-500 tracking-widest uppercase">Contrôle de Sécurité</span>
-              <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Comptes Professionnels en Attente</h3>
-              <p className="text-sm text-gray-500 mt-1 font-medium leading-relaxed">Vérifiez les pièces justificatives et approuvez les accès des médecins et pharmaciens avant qu'ils ne puissent se connecter.</p>
-            </div>
-
-            {loadingAdminData ? (
-              <div className="py-20 text-center"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-500 mx-auto"></div><p className="text-xs text-gray-400 mt-4 font-bold uppercase tracking-wider">Chargement des comptes...</p></div>
-            ) : pendingUsers.length === 0 ? (
-              <div className="bg-white rounded-[2rem] border border-gray-100 p-12 text-center shadow-sm max-w-xl mx-auto flex flex-col items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center text-2xl font-bold border border-emerald-100">✓</div>
-                <h4 className="text-xl font-black text-gray-900 tracking-tight">Tout est en ordre !</h4>
-                <p className="text-sm text-gray-500 leading-relaxed font-medium">Aucune demande de compte professionnel n'est actuellement en attente d'approbation administrative.</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr className="uppercase text-[11px] font-bold text-gray-500 tracking-wider">
-                      <th className="p-5">Professionnel</th>
-                      <th className="p-5">Rôle</th>
-                      <th className="p-5">Rattachement / Zone</th>
-                      <th className="p-5">Date d'inscription</th>
-                      <th className="p-5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {pendingUsers.map(u => (
-                      <tr key={u.id} className="hover:bg-gray-50">
-                        <td className="p-5">
-                          <div className="flex flex-col text-left">
-                            <span className="font-bold text-gray-900 text-base">{u.firstName} {u.lastName}</span>
-                            <span className="text-xs text-gray-400 font-semibold mt-0.5">{u.email}</span>
-                          </div>
-                        </td>
-                        <td className="p-5">
-                          <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${u.role === 'MEDECIN' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
-                            {u.role === 'MEDECIN' ? '🩺 Médecin' : '💊 Pharmacien'}
-                          </span>
-                        </td>
-                        <td className="p-5 text-left">
-                          <span className="text-gray-600 font-bold text-xs">
-                            {u.role === 'MEDECIN' ? `Zone : ${u.zone}` : `Officine : ${u.pharmacieName}`}
-                          </span>
-                        </td>
-                        <td className="p-5 text-xs text-gray-500 font-medium">
-                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
-                        </td>
-                        <td className="p-5 text-right flex gap-2 justify-end">
-                          <button
-                            onClick={() => handleApprovePro(u.id)}
-                            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-                          >
-                            Approuver
-                          </button>
-                          <button
-                            onClick={() => handleRejectPro(u.id)}
-                            className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
-                          >
-                            Rejeter
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+    <DashboardLayout
+      user={user}
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      menuItems={adminMenuItems}
+      onLogout={handleLogout}
+    >
+      {/* ADMIN: COMPTES EN ATTENTE D'APPROBATION */}
+      {activeTab === 'admin_users' && (
+        <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+          <div className="p-8 bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm relative text-left">
+            <span className="text-xs font-bold text-amber-500 tracking-widest uppercase mb-1 block">Contrôle de Sécurité</span>
+            <h3 className="text-2xl font-black text-slate-800 tracking-tight">Comptes Professionnels en Attente</h3>
+            <p className="text-xs font-semibold text-slate-400 leading-relaxed mt-1">Vérifiez les pièces justificatives et approuvez les accès des médecins et pharmaciens avant qu'ils ne puissent se connecter.</p>
           </div>
-        )}
 
-        {/* ADMIN: TOUS LES COMPTES */}
-        {activeTab === 'admin_all_users' && (
-          <div className="px-4 max-w-5xl mx-auto">
-            <div className="flex flex-col gap-2 mb-8 text-left">
-              <span className="text-xs font-bold text-emerald-500 tracking-widest uppercase">Base de données</span>
-              <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Tous les Comptes Utilisateurs</h3>
-              <p className="text-sm text-gray-500 mt-1 font-medium leading-relaxed">Supervisez l'intégralité des comptes patients, professionnels et administrateurs enregistrés sur Apteka.</p>
+          {loadingAdminData ? (
+            <div className="py-20 text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-500 mx-auto"></div>
+              <p className="text-xs text-zinc-400 mt-4 font-bold uppercase tracking-wider">Chargement des comptes...</p>
             </div>
-
-            {loadingAdminData ? (
-              <div className="py-20 text-center"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-500 mx-auto"></div><p className="text-xs text-gray-400 mt-4 font-bold uppercase tracking-wider">Chargement des comptes...</p></div>
-            ) : (
-              <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr className="uppercase text-[11px] font-bold text-gray-500 tracking-wider">
-                      <th className="p-5">Utilisateur</th>
-                      <th className="p-5">Rôle</th>
-                      <th className="p-5">Statut</th>
-                      <th className="p-5">Inscrit le</th>
-                      <th className="p-5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {allUsers.map(u => (
-                      <tr key={u.id} className="hover:bg-gray-50">
-                        <td className="p-5 flex flex-col text-left">
-                          <span className="font-bold text-gray-900 text-base">{u.firstName} {u.lastName}</span>
-                          <span className="text-xs text-gray-400 font-semibold mt-0.5">{u.email || "Non renseigné"}</span>
-                        </td>
-                        <td className="p-5">
-                          <span className={`inline-block px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                            u.role === 'ADMINISTRATEUR' ? 'bg-purple-50 text-purple-600 border border-purple-100' :
-                            u.role === 'MEDECIN' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
-                            u.role === 'PHARMACIEN' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                            'bg-gray-100 text-gray-600 border border-gray-200'
-                          }`}>
-                            {u.role === 'ADMINISTRATEUR' ? '🛡️ Admin' :
-                             u.role === 'MEDECIN' ? '🩺 Médecin' :
-                             u.role === 'PHARMACIEN' ? '💊 Pharmacien' :
-                             '👤 Patient'}
-                          </span>
-                        </td>
-                        <td className="p-5">
-                          <span className={`inline-block px-2.5 py-1 rounded-full font-bold text-[10px] uppercase tracking-wide ${
-                            u.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                            u.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                            'bg-red-50 text-red-600 border border-red-100'
-                          }`}>
-                            {u.status === 'ACTIVE' ? 'Actif' :
-                             u.status === 'PENDING' ? 'En attente' :
-                             'Bloqué'}
-                          </span>
-                        </td>
-                        <td className="p-5 text-xs text-gray-500 font-semibold">
-                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                        </td>
-                        <td className="p-5 text-right">
-                          {u.role !== 'ADMINISTRATEUR' ? (
-                            <button
-                              onClick={() => handleToggleBlock(u.id)}
-                              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95 ${
-                                u.status === 'BLOCKED' 
-                                  ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
-                                  : 'bg-red-50 text-red-500 hover:bg-red-100 border border-red-100'
-                              }`}
-                            >
-                              {u.status === 'BLOCKED' ? 'Débloquer' : 'Bloquer'}
-                            </button>
-                          ) : (
-                            <span className="text-xs text-gray-400 font-semibold italic">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ADMIN: SUPERVISION & STATISTIQUES */}
-        {activeTab === 'admin_supervision' && adminStats && (
-          <div className="px-4 max-w-5xl mx-auto flex flex-col gap-8">
-            <div className="flex flex-col gap-2 text-left">
-              <span className="text-xs font-bold text-emerald-500 tracking-widest uppercase">Supervision en Temps Réel</span>
-              <h3 className="text-3xl font-extrabold text-gray-900 tracking-tight">Tableau de bord d'activité</h3>
-              <p className="text-sm text-gray-500 mt-1 font-medium leading-relaxed">Supervisez l'état général du système de santé Apteka d'Antananarivo.</p>
+          ) : pendingUsers.length === 0 ? (
+            <div className="bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-[2rem] p-12 text-center shadow-sm max-w-xl mx-auto flex flex-col items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-2xl font-bold border border-emerald-500/20">✓</div>
+              <h4 className="text-xl font-black text-slate-800 tracking-tight">Tout est en ordre !</h4>
+              <p className="text-sm text-slate-450 leading-relaxed font-medium">Aucune demande de compte professionnel n'est actuellement en attente d'approbation administrative.</p>
             </div>
-
-            {/* KPI Cards Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-2 text-left">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Pharmacies</span>
-                <b className="text-3xl font-black text-gray-900">{adminStats.pharmaciesCount}</b>
-                <span className="text-[10px] font-bold text-emerald-600">Officines rattachées</span>
-              </div>
-              <div className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-2 text-left">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Professionnels</span>
-                <b className="text-3xl font-black text-gray-900">{adminStats.activeProsCount}</b>
-                <span className="text-[10px] font-bold text-emerald-600">Médecins & pharmaciens</span>
-              </div>
-              <div className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-2 text-left">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Médicaments</span>
-                <b className="text-3xl font-black text-gray-900">{adminStats.totalStockUnits}</b>
-                <span className="text-[10px] font-bold text-emerald-600">Boîtes en stock réel</span>
-              </div>
-              <div className="p-6 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col gap-2 text-left">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Ordonnances</span>
-                <b className="text-3xl font-black text-gray-900">{adminStats.ordonnancesDelivreesCount}</b>
-                <span className="text-[10px] font-bold text-emerald-600">Délivrances certifiées</span>
-              </div>
-            </div>
-
-            {/* Recent Orders / Ordonnances Table */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden text-left flex flex-col">
-              <div className="p-6 border-b border-gray-100">
-                <h4 className="font-extrabold text-gray-900 text-lg">Activité Récente des Ordonnances</h4>
-                <p className="text-xs text-gray-500 mt-1 font-semibold leading-normal">Dernières transactions et émissions d'ordonnances sécurisées.</p>
-              </div>
-
-              {adminStats.recentOrdonnances?.length === 0 ? (
-                <div className="p-12 text-center text-gray-400 text-xs font-bold">Aucune activité enregistrée pour le moment.</div>
-              ) : (
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100">
-                    <tr className="uppercase text-[11px] font-bold text-gray-500 tracking-wider">
-                      <th className="p-5">Code d'ordonnance</th>
-                      <th className="p-5">Date d'émission</th>
-                      <th className="p-5 text-right">Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {adminStats.recentOrdonnances?.map((o: any, idx: number) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="p-5 font-mono font-bold text-emerald-600 text-sm">{o.code}</td>
-                        <td className="p-5 text-xs text-gray-500 font-semibold">
-                          {new Date(o.dateEmission).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                        <td className="p-5 text-right">
-                          <span className={`inline-block px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wide ${
-                            o.status === 'DELIVREE' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
-                          }`}>
-                            {o.status === 'DELIVREE' ? 'Délivrée' : 'En attente'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ADMIN VITRINE */}
-        {activeTab === 'admin_vitrine' && (
-          <div className="px-4 max-w-5xl mx-auto">
-            <h3 className="text-3xl font-extrabold mb-8 text-gray-900">Liaison Vitrine ↔ Compte Réel</h3>
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+          ) : (
+            <div className="bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm overflow-hidden">
               <table className="w-full text-left text-sm">
-                <thead className="bg-gray-50 border-b border-gray-100"><tr className="uppercase text-[11px] font-bold text-gray-500 tracking-wider"><th className="p-5">Fiche Vitrine</th><th className="p-5">Compte Assigné</th><th className="p-5 text-right">Action</th></tr></thead>
-                <tbody className="divide-y divide-gray-100">
-                  {(Array.isArray(adminVitrines) ? adminVitrines : []).map(v => (
-                    <tr key={v.id} className="hover:bg-gray-50">
-                      <td className="p-5 font-bold text-gray-900 text-base">{v.nom}</td>
-                      <td className="p-5 text-gray-500 font-medium">{v.user ? v.user.email : "Non assigné"}</td>
-                      <td className="p-5 text-right">
-                        <select onChange={(e) => linkVitrine(v.id, e.target.value)} defaultValue={v.userId||""} className="p-3 border border-gray-200 rounded-xl text-xs font-bold outline-none bg-white cursor-pointer focus:border-emerald-500">
-                          <option value="">-- Aucun --</option>
-                          {(Array.isArray(adminMedecins) ? adminMedecins : []).map(m => <option key={m.id} value={m.id}>{m.email} ({m.profile?.firstName || "Médecin"})</option>)}
-                        </select>
+                <thead>
+                  <tr className="uppercase text-[11px] font-bold text-slate-450 tracking-wider">
+                    <th className="p-5">Professionnel</th>
+                    <th className="p-5">Rôle</th>
+                    <th className="p-5">Rattachement / Zone</th>
+                    <th className="p-5">Date d'inscription</th>
+                    <th className="p-5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/40">
+                  {pendingUsers.map(u => (
+                    <tr key={u.id} className="hover:bg-white/5">
+                      <td className="p-5">
+                        <div className="flex flex-col text-left">
+                          <span className="font-bold text-slate-850 text-base">{u.firstName} {u.lastName}</span>
+                          <span className="text-xs text-slate-450 font-semibold mt-0.5">{u.email}</span>
+                        </div>
+                      </td>
+                      <td className="p-5">
+                        <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          u.role === 'MEDECIN' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                        }`}>
+                          {u.role === 'MEDECIN' ? '🩺 Médecin' : '💊 Pharmacien'}
+                        </span>
+                      </td>
+                      <td className="p-5 text-left">
+                        <span className="text-slate-400 font-bold text-xs">
+                          {u.role === 'MEDECIN' ? `Zone : ${u.zone}` : `Officine : ${u.pharmacieName}`}
+                        </span>
+                      </td>
+                      <td className="p-5 text-xs text-slate-500 font-medium">
+                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
+                      </td>
+                      <td className="p-5 text-right flex gap-2 justify-end">
+                        <button
+                          onClick={() => handleApprovePro(u.id)}
+                          className="px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                        >
+                          Approuver
+                        </button>
+                        <button
+                          onClick={() => handleRejectPro(u.id)}
+                          className="px-4 py-2 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                        >
+                          Rejeter
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ADMIN: TOUS LES COMPTES */}
+      {activeTab === 'admin_all_users' && (
+        <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+          <div className="p-8 bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm relative text-left">
+            <span className="text-xs font-bold text-emerald-500 tracking-widest uppercase mb-1 block">Base de données</span>
+            <h3 className="text-2xl font-black text-slate-800 tracking-tight">Tous les Comptes Utilisateurs</h3>
+            <p className="text-xs font-semibold text-slate-400 leading-relaxed mt-1">Supervisez l'intégralité des comptes patients, professionnels et administrateurs enregistrés sur Apteka.</p>
           </div>
-        )}
 
-        {user.role === 'MEDECIN' && <DoctorDashboard user={user} activeTab={activeTab} setActiveTab={setActiveTab} />}
-        {user.role === 'PHARMACIEN' && <PharmacistDashboard user={user} activeTab={activeTab} setActiveTab={setActiveTab} />}
-      </main>
+          {loadingAdminData ? (
+            <div className="py-20 text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-emerald-500 mx-auto"></div>
+              <p className="text-xs text-zinc-400 mt-4 font-bold uppercase tracking-wider">Chargement des comptes...</p>
+            </div>
+          ) : (
+            <div className="bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm overflow-hidden">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="uppercase text-[11px] font-bold text-slate-455 tracking-wider">
+                    <th className="p-5">Utilisateur</th>
+                    <th className="p-5">Rôle</th>
+                    <th className="p-5">Statut</th>
+                    <th className="p-5">Inscrit le</th>
+                    <th className="p-5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/40">
+                  {allUsers.map(u => (
+                    <tr key={u.id} className="hover:bg-white/5">
+                      <td className="p-5 flex flex-col text-left">
+                        <span className="font-bold text-slate-850 text-base">{u.firstName} {u.lastName}</span>
+                        <span className="text-xs text-slate-450 font-semibold mt-0.5">{u.email || "Non renseigné"}</span>
+                      </td>
+                      <td className="p-5">
+                        <span className={`inline-block px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                          u.role === 'ADMINISTRATEUR' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                          u.role === 'MEDECIN' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                          u.role === 'PHARMACIEN' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                          'bg-zinc-800/60 text-zinc-400 border border-zinc-700/50'
+                        }`}>
+                          {u.role === 'ADMINISTRATEUR' ? '🛡️ Admin' :
+                           u.role === 'MEDECIN' ? '🩺 Médecin' :
+                           u.role === 'PHARMACIEN' ? '💊 Pharmacien' :
+                           '👤 Patient'}
+                        </span>
+                      </td>
+                      <td className="p-5">
+                        <span className={`inline-block px-2.5 py-1 rounded-full font-bold text-[10px] uppercase tracking-wide ${
+                          u.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                          u.status === 'PENDING' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                          'bg-red-500/10 text-red-400 border border-red-500/20'
+                        }`}>
+                          {u.status === 'ACTIVE' ? 'Actif' :
+                           u.status === 'PENDING' ? 'En attente' :
+                           'Bloqué'}
+                        </span>
+                      </td>
+                      <td className="p-5 text-xs text-slate-455 font-semibold">
+                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                      </td>
+                      <td className="p-5 text-right">
+                        {u.role !== 'ADMINISTRATEUR' ? (
+                          <button
+                            onClick={() => handleToggleBlock(u.id)}
+                            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95 ${
+                              u.status === 'BLOCKED' 
+                                ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white hover:from-teal-600 hover:to-cyan-600' 
+                                : 'bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400'
+                            }`}
+                          >
+                            {u.status === 'BLOCKED' ? 'Débloquer' : 'Bloquer'}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-500 font-semibold italic">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
-    </div>
+      {/* ADMIN: SUPERVISION & STATISTIQUES */}
+      {activeTab === 'admin_supervision' && adminStats && (
+        <div className="flex flex-col gap-8 animate-in fade-in duration-300">
+          <div className="p-8 bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm relative text-left">
+            <span className="text-xs font-bold text-emerald-500 tracking-widest uppercase mb-1 block">Supervision en Temps Réel</span>
+            <h3 className="text-2xl font-black text-slate-800 tracking-tight">Tableau de bord d'activité</h3>
+            <p className="text-xs font-semibold text-slate-400 leading-relaxed mt-1">Supervisez l'état général du système de santé Apteka d'Antananarivo.</p>
+          </div>
+
+          {/* KPI Cards Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="p-6 bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm flex flex-col gap-2 text-left">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pharmacies</span>
+              <b className="text-3xl font-black text-slate-800">{adminStats.pharmaciesCount}</b>
+              <span className="text-[10px] font-bold text-emerald-450">Officines rattachées</span>
+            </div>
+            <div className="p-6 bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm flex flex-col gap-2 text-left">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Professionnels</span>
+              <b className="text-3xl font-black text-slate-800">{adminStats.activeProsCount}</b>
+              <span className="text-[10px] font-bold text-emerald-450">Médecins & pharmaciens</span>
+            </div>
+            <div className="p-6 bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm flex flex-col gap-2 text-left">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Médicaments</span>
+              <b className="text-3xl font-black text-slate-800">{adminStats.totalStockUnits}</b>
+              <span className="text-[10px] font-bold text-emerald-450">Boîtes en stock réel</span>
+            </div>
+            <div className="p-6 bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm flex flex-col gap-2 text-left">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ordonnances</span>
+              <b className="text-3xl font-black text-slate-800">{adminStats.ordonnancesDelivreesCount}</b>
+              <span className="text-[10px] font-bold text-emerald-450">Délivrances certifiées</span>
+            </div>
+          </div>
+
+          {/* Recent Orders / Ordonnances Table */}
+          <div className="bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm overflow-hidden text-left flex flex-col">
+            <div className="p-6 border-b border-zinc-800/40">
+              <h4 className="font-extrabold text-slate-800 text-lg">Activité Récente des Ordonnances</h4>
+              <p className="text-xs text-slate-455 mt-1 font-semibold leading-normal">Dernières transactions et émissions d'ordonnances sécurisées.</p>
+            </div>
+
+            {adminStats.recentOrdonnances?.length === 0 ? (
+              <div className="p-12 text-center text-slate-455 text-xs font-bold">Aucune activité enregistrée pour le moment.</div>
+            ) : (
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="uppercase text-[11px] font-bold text-slate-455 tracking-wider">
+                    <th className="p-5">Code d'ordonnance</th>
+                    <th className="p-5">Date d'émission</th>
+                    <th className="p-5 text-right">Statut</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/40">
+                  {adminStats.recentOrdonnances?.map((o: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-white/5">
+                      <td className="p-5 font-mono font-bold text-teal-400 text-sm">{o.code}</td>
+                      <td className="p-5 text-xs text-slate-455 font-semibold">
+                        {new Date(o.dateEmission).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="p-5 text-right">
+                        <span className={`inline-block px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wide ${
+                          o.status === 'DELIVREE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                        }`}>
+                          {o.status === 'DELIVREE' ? 'Délivrée' : 'En attente'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN VITRINE */}
+      {activeTab === 'admin_vitrine' && (
+        <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+          <div className="p-8 bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm relative text-left">
+            <span className="text-xs font-bold text-teal-400 tracking-widest uppercase mb-1 block">Modération du Registre</span>
+            <h3 className="text-2xl font-black text-slate-800 tracking-tight">Liaison Vitrine ↔ Compte Réel</h3>
+            <p className="text-xs font-semibold text-slate-400 leading-relaxed mt-1">Associez les fiches vitrines d'Antananarivo avec les comptes médecins réels enregistrés.</p>
+          </div>
+
+          <div className="bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm overflow-hidden">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="uppercase text-[11px] font-bold text-slate-455 tracking-wider">
+                  <th className="p-5">Fiche Vitrine</th>
+                  <th className="p-5">Compte Assigné</th>
+                  <th className="p-5 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/40">
+                {(Array.isArray(adminVitrines) ? adminVitrines : []).map(v => (
+                  <tr key={v.id} className="hover:bg-white/5">
+                    <td className="p-5 font-bold text-slate-850 text-base">{v.nom}</td>
+                    <td className="p-5 text-slate-400 font-semibold">{v.user ? v.user.email : "Non assigné"}</td>
+                    <td className="p-5 text-right">
+                      <select 
+                        onChange={(e) => linkVitrine(v.id, e.target.value)} 
+                        defaultValue={v.userId||""} 
+                        className="p-3 border border-zinc-800/60 rounded-xl text-xs font-bold outline-none bg-zinc-900 text-slate-200 cursor-pointer focus:border-teal-500"
+                      >
+                        <option value="">-- Aucun --</option>
+                        {(Array.isArray(adminMedecins) ? adminMedecins : []).map(m => (
+                          <option key={m.id} value={m.id}>
+                            {m.email} ({m.profile?.firstName || "Médecin"})
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </DashboardLayout>
   );
 }

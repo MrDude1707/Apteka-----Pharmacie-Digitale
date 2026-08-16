@@ -122,7 +122,7 @@ export default function LandingPage({ onLoginSuccess, handleQuickDemoLogin }) {
             : "top-0 left-0 w-full px-6 sm:px-12 py-5 bg-zinc-950/40 backdrop-blur-md border-b border-zinc-900/40 shadow-none"
         }`}
       >
-        <span className="text-xl font-black bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent tracking-widest uppercase">APTEKA</span>
+        <span className="text-lg font-bold font-['Syncopate'] bg-gradient-to-r from-[#ff7b29] via-[#ffab5e] to-[#ffdcb0] bg-clip-text text-transparent tracking-[0.22em] uppercase">APTEKA</span>
         
         {/* Navigation Links */}
         <div className="hidden md:flex items-center gap-8 text-xs font-bold text-zinc-400 tracking-wide">
@@ -287,7 +287,7 @@ export default function LandingPage({ onLoginSuccess, handleQuickDemoLogin }) {
             
             {/* Column 1: Brand Info */}
             <div className="flex flex-col gap-4">
-              <span className="text-xl font-black bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent tracking-widest uppercase">APTEKA</span>
+              <span className="text-lg font-bold font-['Syncopate'] bg-gradient-to-r from-[#ff7b29] via-[#ffab5e] to-[#ffdcb0] bg-clip-text text-transparent tracking-[0.22em] uppercase">APTEKA</span>
               <p className="text-zinc-400 font-semibold text-xs sm:text-sm leading-relaxed mt-2">
                 Apteka connecte les acteurs de la santé d'Antananarivo pour fluidifier la prescription, sécuriser les ordonnances et centraliser les stocks officiels.
               </p>
@@ -321,7 +321,7 @@ export default function LandingPage({ onLoginSuccess, handleQuickDemoLogin }) {
               <h4 className="text-sm font-black text-white uppercase tracking-widest">Contact & Réseaux</h4>
               <div className="flex flex-col gap-2 text-xs sm:text-sm font-semibold text-zinc-400">
                 <span className="flex items-center gap-2"><Mail size={14} className="text-teal-400" /> contact@apteka.mg</span>
-                <span className="flex items-center gap-2"><Phone size={14} className="text-teal-400" /> +261 34 11 234 56</span>
+                <span className="flex items-center gap-2"><Phone size={14} className="text-teal-400" /> +261 38 47 934 71</span>
               </div>
             </div>
 

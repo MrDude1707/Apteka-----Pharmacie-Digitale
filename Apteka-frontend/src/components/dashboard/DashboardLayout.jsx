@@ -50,7 +50,7 @@ export default function DashboardLayout({
         <div>
           {/* Logo container */}
           <div className="flex justify-center mb-10 pb-4 border-b border-zinc-800/60">
-            <span className="text-xl font-black bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent tracking-widest uppercase">APTEKA</span>
+            <span className="text-lg font-bold font-['Syncopate'] bg-gradient-to-r from-[#ff7b29] via-[#ffab5e] to-[#ffdcb0] bg-clip-text text-transparent tracking-[0.22em] uppercase">APTEKA</span>
           </div>
 
           {/* Nav Menu */}

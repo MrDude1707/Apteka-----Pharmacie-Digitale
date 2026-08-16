@@ -54,7 +54,7 @@ const RefokusCounter = ({ value, label, suffix = "" }) => {
     <div 
       className="flex flex-col items-center justify-center p-8 sm:p-10 bg-zinc-900/40 backdrop-blur-xl border border-zinc-800/80 rounded-[2.5rem] shadow-2xl hover:border-teal-500/30 hover:scale-[1.02] transition-all duration-500 group"
     >
-      <div className="flex items-center text-4xl sm:text-5xl md:text-6xl font-black bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent tracking-tighter font-mono leading-none">
+      <div className="flex items-center text-4xl sm:text-5xl md:text-6xl font-black text-teal-400 tracking-tighter font-mono leading-none">
         {valueStr.split('').map((char, index) => {
           if (isNaN(parseInt(char, 10)) && char !== '.') {
             return <span key={index} className="select-none leading-none">{char}</span>;

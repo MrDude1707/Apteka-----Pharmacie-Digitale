@@ -151,10 +151,10 @@ export default function FeaturesScroll() {
             
             {/* En-tête de section figé */}
             <div className="mb-10 lg:mb-16">
-              <span className="text-teal-500 font-extrabold uppercase tracking-widest text-[10px] sm:text-xs bg-teal-500/10 px-3 py-1.5 rounded-full border border-teal-500/20">
+              <span className="inline-block text-teal-500 font-extrabold uppercase tracking-widest text-[10px] sm:text-xs bg-teal-500/10 px-3 py-1.5 rounded-full border border-teal-500/20 mb-6">
                 Le Protocole Apteka
               </span>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-white leading-[1.1] mt-6">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-white leading-[1.1]">
                 Un parcours unifié,<br className="hidden sm:block" />
                 <span className="text-zinc-500">traçable au millimètre.</span>
               </h2>

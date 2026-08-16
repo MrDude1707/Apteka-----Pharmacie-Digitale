@@ -6,7 +6,7 @@ export default function Navbar({ user, onLogout, activeTab, setActiveTab }) {
   return (
     <nav className="sticky top-0 z-[1000] w-full bg-white/75 backdrop-blur-md border-b border-gray-200/40 px-6 py-3 flex items-center justify-between">
       <div className="cursor-pointer" onClick={() => { setActiveTab(user.role === 'MEDECIN' ? 'medecin_stocks' : user.role === 'PHARMACIEN' ? 'pharmacien_deliver' : user.role === 'ADMINISTRATEUR' ? 'admin_users' : 'recherche'); }}>
-        <span className="text-xl font-black bg-gradient-to-r from-teal-500 to-sky-500 bg-clip-text text-transparent tracking-widest uppercase">APTEKA</span>
+        <span className="text-lg font-bold font-['Syncopate'] bg-gradient-to-r from-[#ff7b29] via-[#ffab5e] to-[#ffdcb0] bg-clip-text text-transparent tracking-[0.22em] uppercase">APTEKA</span>
       </div>
 
       {user && (

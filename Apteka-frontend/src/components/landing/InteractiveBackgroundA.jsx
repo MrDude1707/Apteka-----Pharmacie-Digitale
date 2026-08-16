@@ -1,535 +1,397 @@
-import React, { useRef, useMemo, useEffect } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
-// --- SHADERS FOR MAIN TEXT PARTICLES ---
-const vertexShader = `
-  attribute float aRandom;
-  attribute float aSize;
-  attribute float aColorMix;
+/* ============================================================
+   APTEKA — solid geometric 3D typography
+   Ported directly from apteka-3d.html for a flawless integration.
+   Charcoal & copper palette: letters sit dark and metallic at
+   rest, then ignite into warm ember tones on hover, like coal
+   catching light. No font files — every glyph is a hand-built
+   extruded path.
+   ============================================================ */
 
-  varying float vColorMix;
-  varying float vRandom;
-  varying float vAlpha;
+const DEPTH = 5.2;
+const S = 3.0;      // stroke weight (slimmer = more refined)
+const H = 14;        // cap height
 
-  uniform float uPixelRatio;
-  uniform float uTime;
-
-  void main() {
-    vColorMix = aColorMix;
-    vRandom = aRandom;
-
-    vec3 pos = position;
-    // Subtle z-vibration based on noise/time to look organic
-    pos.z += sin(uTime * 1.5 + aRandom * 6.2831) * 0.15;
-
-    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-
-    // Attenuate point size by distance to camera
-    float attenuated = (220.0 / -mvPosition.z) * aSize * uPixelRatio;
-    gl_PointSize = clamp(attenuated, 1.0, 9.0);
-
-    // Subtle individual breathing/twinkle effect
-    vAlpha = 0.75 + 0.25 * sin(uTime * 2.0 + aRandom * 12.0);
-
-    gl_Position = projectionMatrix * mvPosition;
-  }
-`;
-
-const fragmentShader = `
-  precision mediump float;
-
-  varying float vColorMix;
-  varying float vRandom;
-  varying float vAlpha;
-
-  uniform vec3 uColorA;
-  uniform vec3 uColorB;
-
-  void main() {
-    vec2 uv = gl_PointCoord - vec2(0.5);
-    float dist = length(uv);
-
-    // Tight halo: falls off much faster for a premium crisp look
-    float halo = smoothstep(0.30, 0.0, dist);
-    // Small, hard, bright core -> gives a crisp "lit particle" look
-    float core = smoothstep(0.10, 0.0, dist);
-    // Extra hot specular pinpoint at the very center for a glassy glint
-    float specular = smoothstep(0.035, 0.0, dist);
-
-    vec3 baseColor = mix(uColorA, uColorB, vColorMix);
-    
-    // Darken the halo edge so it reads as light-in-darkness, not fog
-    vec3 color = baseColor * (0.35 + 0.65 * core);
-    color += vec3(1.0) * specular * 0.9; // white-hot specular reflection point
-
-    float alpha = (halo * 0.55 + core * 0.75) * vAlpha;
-    if (alpha < 0.03) discard;
-
-    gl_FragColor = vec4(color, clamp(alpha, 0.0, 1.0));
-  }
-`;
-
-// --- SHADERS FOR STARFIELD BACKGROUND ---
-const starVertexShader = `
-  attribute float aRandom;
-  varying float vAlpha;
-  uniform float uTime;
-  void main() {
-    vec3 pos = position;
-    vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-    gl_PointSize = clamp((80.0 / -mvPosition.z), 0.4, 2.2);
-    vAlpha = 0.08 + 0.10 * sin(uTime * 0.6 + aRandom * 20.0);
-    gl_Position = projectionMatrix * mvPosition;
-  }
-`;
-
-const starFragmentShader = `
-  precision mediump float;
-  varying float vAlpha;
-  void main() {
-    vec2 uv = gl_PointCoord - vec2(0.5);
-    float d = length(uv);
-    float glow = smoothstep(0.5, 0.0, d);
-    vec3 color = vec3(0.35, 0.9, 0.85); // Light biotech teal
-    gl_FragColor = vec4(color, glow * vAlpha);
-  }
-`;
-
-// --- TEXT SAMPLING FUNCTION ---
-// Re-implemented from the user's high-fidelity canvas font sampler
-function sampleTextPoints(text, opts) {
-  const {
-    fontSize = 300,
-    fontFamily = "'Segoe UI', Arial, sans-serif",
-    fontWeight = 700,
-    gap = 4,
-    letterSpacing = 0.02
-  } = opts || {};
-
-  const sampleCanvas = document.createElement('canvas');
-  const ctx = sampleCanvas.getContext('2d');
-
-  const canvasW = 2200;
-  const canvasH = 600;
-  sampleCanvas.width = canvasW;
-  sampleCanvas.height = canvasH;
-
-  ctx.clearRect(0, 0, canvasW, canvasH);
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
-
-  const chars = text.split('');
-  const widths = chars.map(c => ctx.measureText(c).width);
-  const spacingPx = fontSize * letterSpacing;
-  const totalWidth = widths.reduce((a, b) => a + b, 0) + spacingPx * (chars.length - 1);
-
-  let cursorX = canvasW / 2 - totalWidth / 2;
-  const centerY = canvasH / 2;
-
-  chars.forEach((ch, i) => {
-    ctx.fillText(ch, cursorX, centerY);
-    cursorX += widths[i] + spacingPx;
-  });
-
-  const imgData = ctx.getImageData(0, 0, canvasW, canvasH).data;
-  const points = [];
-
-  for (let y = 0; y < canvasH; y += gap) {
-    for (let x = 0; x < canvasW; x += gap) {
-      const idx = (y * canvasW + x) * 4;
-      const alpha = imgData[idx + 3];
-      if (alpha > 128) {
-        // Center-relative points
-        points.push({ x: x - canvasW / 2, y: -(y - canvasH / 2) });
-      }
-    }
-  }
-  return points;
+function shapeFromPts(pts) {
+  const s = new THREE.Shape();
+  pts.forEach(([x, y], i) => (i === 0 ? s.moveTo(x, y) : s.lineTo(x, y)));
+  return s;
 }
 
-// --- AMBIENT STARFIELD COMPONENT ---
-function BiotechStarfield() {
-  const pointsRef = useRef();
-
-  const [starPositions, starRandoms] = useMemo(() => {
-    const STAR_COUNT = 1000;
-    const pos = new Float32Array(STAR_COUNT * 3);
-    const rand = new Float32Array(STAR_COUNT);
-
-    for (let i = 0; i < STAR_COUNT; i++) {
-      const idx3 = i * 3;
-      pos[idx3]     = (Math.random() - 0.5) * 160;
-      pos[idx3 + 1] = (Math.random() - 0.5) * 100;
-      pos[idx3 + 2] = (Math.random() - 0.5) * 120 - 20;
-      rand[i] = Math.random();
-    }
-    return [pos, rand];
-  }, []);
-
-  const starUniforms = useMemo(() => ({
-    uTime: { value: 0 }
-  }), []);
-
-  useFrame((state) => {
-    const time = state.clock.getElapsedTime();
-    starUniforms.uTime.value = time;
-    if (pointsRef.current) {
-      pointsRef.current.rotation.y = time * 0.01;
-    }
+function extrudePiece(pts, hole) {
+  const shape = shapeFromPts(pts);
+  if (hole) shape.holes.push(shapeFromPts(hole));
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth: DEPTH,
+    bevelEnabled: true,
+    bevelThickness: 0.62,
+    bevelSize: 0.52,
+    bevelSegments: 5,
+    curveSegments: 4
   });
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[starPositions, 3]}
-        />
-        <bufferAttribute
-          attach="attributes-aRandom"
-          args={[starRandoms, 1]}
-        />
-      </bufferGeometry>
-      <shaderMaterial
-        vertexShader={starVertexShader}
-        fragmentShader={starFragmentShader}
-        uniforms={starUniforms}
-        transparent={true}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-      />
-    </points>
-  );
+  geo.computeVertexNormals();
+  return geo;
 }
 
-// --- MAIN PARTICLE WORD COMPONENT ---
-function ParticleWord({ text }) {
-  const geometryRef = useRef();
-  const mainMaterialRef = useRef();
+const glyphDefs = {
+  A(W = 10.5) {
+    const legTop = 0.85, midY = H * 0.42, barHalf = S * 0.52;
+    return [
+      { pts: [[0, 0], [S, 0], [W / 2 + legTop, H - 0.35], [W / 2 - legTop, H]] },
+      { pts: [[W, 0], [W - S, 0], [W / 2 - legTop, H - 0.35], [W / 2 + legTop, H]] },
+      { pts: [[S * 0.5, midY - barHalf], [W - S * 0.5, midY - barHalf], [W - S * 0.5, midY + barHalf], [S * 0.5, midY + barHalf]] }
+    ];
+  },
+  P(W = 9.5) {
+    const bowlH = H * 0.56, g = 0.85;
+    return [{
+      pts: [[0, 0], [S, 0], [S, H - bowlH], [W, H - bowlH], [W, H], [0, H]],
+      hole: [[S + g, H - bowlH + g], [W - g, H - bowlH + g], [W - g, H - g], [S + g, H - g]]
+    }];
+  },
+  T(W = 9.5) {
+    return [{ pts: [[W / 2 - S / 2, 0], [W / 2 + S / 2, 0], [W / 2 + S / 2, H - S], [W, H - S], [W, H], [0, H], [0, H - S], [W / 2 - S / 2, H - S]] }];
+  },
+  E(W = 9.5) {
+    const mid = S * 0.46, arm = W * 0.8;
+    return [{
+      pts: [
+        [0, 0], [W, 0], [W, S], [S, S], [S, H / 2 - mid], [arm, H / 2 - mid], [arm, H / 2 + mid], [S, H / 2 + mid],
+        [S, H - S], [W, H - S], [W, H], [0, H]
+      ]
+    }];
+  },
+  K(W = 10) {
+    const midY = H * 0.5, half = S * 0.46;
+    return [
+      { pts: [[0, 0], [S, 0], [S, H], [0, H]] },
+      { pts: [[S, midY - half], [S, midY + half], [W, H], [W - 1.3 * S, H]] },
+      { pts: [[S, midY + half], [S, midY - half], [W - 1.3 * S, 0], [W, 0]] }
+    ];
+  }
+};
 
-  const { viewport, camera } = useThree();
+const palette = [
+  0x5a3a22, // A - bronze
+  0x8a4a24, // P - copper
+  0x3d2a1c, // T - charcoal-brown
+  0xb0602c, // E - burnt amber
+  0x4a2f1f, // K - dark umber
+  0x7a4326  // A - warm cocoa
+].map(h => new THREE.Color(h));
 
-  // Mouse NDC coordinates tracker manually bound to window to bypass pointer-events-none!
-  const windowMouseNDC = useRef(new THREE.Vector2(-9999, -9999));
-  const isMouseActive = useRef(false);
-  const targetCam = useRef(new THREE.Vector2(0, 0));
+const emberGradient = [0xff7b29, 0xffab5e, 0xff4d1f, 0xffc978, 0xff5f2e, 0xffb066].map(h => new THREE.Color(h));
 
-  // Click shockwave tracker
-  const shockwaves = useRef([]);
-  const spawnShockwaveFlag = useRef(false);
+const baseEmissive = new THREE.Color(0x0a0503);
 
-  const SHOCK_SPEED = 26.0;     // ring expansion velocity
-  const SHOCK_WIDTH = 6.0;      // thickness of shockwave
-  const SHOCK_STRENGTH = 10.0;   // kinetic push force
-  const SHOCK_LIFE = 2.2;       // lifetime of wave in seconds
-
-  // Sampling points using the user's template
-  const rawPoints = useMemo(() => {
-    return sampleTextPoints(text, {
-      fontSize: 300,
-      fontWeight: 700,
-      gap: 4
+function buildLetter(key, W, baseColor, emberColor, floatSeed) {
+  const group = new THREE.Group();
+  const pieces = glyphDefs[key](W);
+  pieces.forEach(p => {
+    const geo = extrudePiece(p.pts, p.hole);
+    const mat = new THREE.MeshPhysicalMaterial({
+      color: baseColor.clone(),
+      metalness: 0.55,
+      roughness: 0.32,
+      clearcoat: 0.9,
+      clearcoatRoughness: 0.16,
+      emissive: baseEmissive.clone(),
+      emissiveIntensity: 0.4,
+      side: THREE.DoubleSide
     });
-  }, [text]);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.userData.baseColor = baseColor.clone();
+    mesh.userData.emberColor = emberColor.clone();
+    group.add(mesh);
+  });
 
-  // Find boundaries of the generated word to center and map colors
-  const bounds = useMemo(() => {
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-    rawPoints.forEach(p => {
-      if (p.x < minX) minX = p.x;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.y > maxY) maxY = p.y;
-    });
-    return {
-      minX, maxX,
-      minY, maxY,
-      width: (maxX - minX) || 1,
-      height: (maxY - minY) || 1
-    };
-  }, [rawPoints]);
+  const box = new THREE.Box3().setFromObject(group);
+  const c = new THREE.Vector3();
+  box.getCenter(c);
+  group.children.forEach(m => m.position.sub(c));
 
-  // Convert points to physical particles with original, current coordinates and velocity
-  const particles = useMemo(() => {
-    return rawPoints.map((p) => {
-      const wx = p.x;
-      const wy = p.y;
-      const wz = (Math.random() - 0.5) * 4.5;
+  group.userData.hoverT = 0;
+  group.userData.baseY = 0;
+  group.userData.floatSeed = floatSeed;
+  return group;
+}
 
-      return {
-        ox: wx, oy: wy, oz: wz, // Local canvas-scale target positions
-        x: wx + (Math.random() - 0.5) * 1200, // Spawn widely exploded
-        y: wy + (Math.random() - 0.5) * 1200,
-        z: wz + (Math.random() - 0.5) * 1200,
-        vx: 0, vy: 0, vz: 0,
-        random: Math.random(),
-        size: 1.4 + Math.random() * 1.6,
-        colorMix: (p.x - bounds.minX) / bounds.width,
-        speedFactor: 0.8 + Math.random() * 0.5
-      };
-    });
-  }, [rawPoints, bounds]);
+function makeGlowTexture(hex) {
+  const c = document.createElement("canvas");
+  c.width = c.height = 512;
+  const ctx = c.getContext("2d");
+  const g = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
+  g.addColorStop(0, hex + "aa");
+  g.addColorStop(0.5, hex + "22");
+  g.addColorStop(1, hex + "00");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 512, 512);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
 
-  // Native typed arrays for the geometry buffers
-  const [positionAttr, randomAttr, sizeAttr, colorMixAttr] = useMemo(() => {
-    const pos = new Float32Array(particles.length * 3);
-    const rand = new Float32Array(particles.length);
-    const sz = new Float32Array(particles.length);
-    const mixCol = new Float32Array(particles.length);
+export default function InteractiveBackgroundA() {
+  const canvasRef = useRef(null);
 
-    for (let i = 0; i < particles.length; i++) {
-      const p = particles[i];
-      pos[i * 3]     = p.x;
-      pos[i * 3 + 1] = p.y;
-      pos[i * 3 + 2] = p.z;
-      rand[i]        = p.random;
-      sz[i]          = p.size;
-      mixCol[i]      = p.colorMix;
-    }
-    return [pos, rand, sz, mixCol];
-  }, [particles]);
-
-  // Uniform declarations
-  const mainUniforms = useMemo(() => ({
-    uTime: { value: 0 },
-    uPixelRatio: { value: Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 2) },
-    uColorA: { value: new THREE.Color(0x00ffaa) }, // Cyber Teal
-    uColorB: { value: new THREE.Color(0x00bcff) }  // biotech Cyan
-  }), []);
-
-  // Window listeners bound at global level to guarantee mouse tracking across the entire screen!
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      isMouseActive.current = true;
-      
-      // Compute window-level NDC manually to bypass CSS pointer-events obstacles!
-      windowMouseNDC.current.x = (e.clientX / window.innerWidth) * 2 - 1;
-      windowMouseNDC.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-      const nx = (e.clientX / window.innerWidth) - 0.5;
-      const ny = (e.clientY / window.innerHeight) - 0.5;
-      targetCam.current.set(nx * 4.0, -ny * 2.5);
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    /* ---------- renderer / scene / camera ---------- */
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 800);
+    camera.position.set(0, 3, 120);
+
+    /* ---------- lighting: warm charcoal-forge mood ---------- */
+    scene.add(new THREE.AmbientLight(0x3a2416, 0.55));
+
+    const key = new THREE.DirectionalLight(0xffdcb0, 1.2);
+    key.position.set(45, 60, 70);
+    scene.add(key);
+
+    const rim = new THREE.PointLight(0xff9d4d, 2.4, 400, 2);
+    rim.position.set(-70, 15, -45);
+    scene.add(rim);
+
+    const fill = new THREE.PointLight(0x8a3d1c, 0.6, 400, 2);
+    fill.position.set(0, -40, 60);
+    scene.add(fill);
+
+    /* ---------- assemble the word ---------- */
+    const wordGroup = new THREE.Group();
+    scene.add(wordGroup);
+
+    const lettersList = [
+      { k: "A", w: 10.5 }, { k: "P", w: 9.5 }, { k: "T", w: 9.5 },
+      { k: "E", w: 9.5 }, { k: "K", w: 10 }, { k: "A", w: 10.5 }
+    ];
+    const GAP = 2.4;
+    const totalWidth = lettersList.reduce((s, l) => s + l.w, 0) + GAP * (lettersList.length - 1);
+    let runX = -totalWidth / 2;
+
+    lettersList.forEach((l, i) => {
+      const lg = buildLetter(
+        l.k,
+        l.w,
+        palette[i % palette.length],
+        emberGradient[i % emberGradient.length],
+        Math.random() * Math.PI * 2
+      );
+      lg.position.x = runX + l.w / 2;
+      runX += l.w + GAP;
+      wordGroup.add(lg);
+    });
+
+    /* ---------- ground glow (canvas-texture blob) ---------- */
+    const groundGlow = new THREE.Mesh(
+      new THREE.PlaneGeometry(140, 60),
+      new THREE.MeshBasicMaterial({ map: makeGlowTexture("#ff7b29"), transparent: true, opacity: 0.4, depthWrite: false })
+    );
+    groundGlow.rotation.x = -Math.PI / 2;
+    groundGlow.position.y = -H / 2 - 3;
+    scene.add(groundGlow);
+
+    const backGlow = new THREE.Mesh(
+      new THREE.PlaneGeometry(160, 160),
+      new THREE.MeshBasicMaterial({ map: makeGlowTexture("#3d2211"), transparent: true, opacity: 0.6, depthWrite: false })
+    );
+    backGlow.position.z = -50;
+    scene.add(backGlow);
+
+    /* ---------- drifting embers (small glowing motes) ---------- */
+    const emberCount = window.innerWidth < 720 ? 18 : 40;
+    const emberGeo = new THREE.SphereGeometry(0.18, 6, 6);
+    const emberMat = new THREE.MeshBasicMaterial({ color: 0xff9a4d, transparent: true, opacity: 0.55 });
+    const embers = new THREE.Group();
+    scene.add(embers);
+    for (let i = 0; i < emberCount; i++) {
+      const m = new THREE.Mesh(emberGeo, emberMat.clone());
+      m.position.set((Math.random() - 0.5) * 130, -30 + Math.random() * 80, -10 - Math.random() * 80);
+      m.userData.speed = 0.15 + Math.random() * 0.3;
+      m.userData.drift = Math.random() * Math.PI * 2;
+      m.userData.baseOpacity = 0.25 + Math.random() * 0.4;
+      embers.add(m);
+    }
+
+    /* ============================================================
+       Camera fit — VERY BIG as requested ("bien grand, vraiment grand")
+       ============================================================ */
+    function fitCamera() {
+      const box = new THREE.Box3().setFromObject(wordGroup);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const aspect = window.innerWidth / window.innerHeight;
+      const halfFovY = (camera.fov * Math.PI / 180) / 2;
+      const distForHeight = (size.y / 2) / Math.tan(halfFovY);
+      const distForWidth = (size.x / 2) / (Math.tan(halfFovY) * aspect);
+      // Recul de caméra réduit de 1.55 à 1.05 pour avoir un texte ÉNORME à l'écran
+      camera.position.z = Math.max(distForHeight, distForWidth) * 1.05;
+    }
+    fitCamera();
+
+    /* ============================================================
+       Pointer interaction — parallax tilt + per-letter hover
+       ============================================================ */
+    const pointerNDC = new THREE.Vector2(0, 0);
+    let targetRotX = 0, targetRotY = 0, curRotX = 0, curRotY = 0;
+    const raycaster = new THREE.Raycaster();
+
+    let curTX = window.innerWidth / 2, curTY = window.innerHeight / 2;
+
+    function onPointerMove(clientX, clientY) {
+      const nx = (clientX / window.innerWidth) * 2 - 1;
+      const ny = (clientY / window.innerHeight) * 2 - 1;
+      pointerNDC.set(nx, ny);
+      targetRotY = nx * 0.55;
+      targetRotX = ny * 0.24;
+      curTX = clientX;
+      curTY = clientY;
+    }
+
+    const handlePointerMoveGlobal = (e) => onPointerMove(e.clientX, e.clientY);
+    const handleTouchMoveGlobal = (e) => {
+      if (e.touches[0]) onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
     };
 
-    const handleMouseLeave = () => {
-      isMouseActive.current = false;
-      windowMouseNDC.current.set(-9999, -9999);
-    };
+    window.addEventListener("pointermove", handlePointerMoveGlobal);
+    window.addEventListener("touchmove", handleTouchMoveGlobal, { passive: true });
 
-    const handleTouchMove = (e) => {
-      if (e.touches.length > 0) {
-        isMouseActive.current = true;
-        const t = e.touches[0];
-        windowMouseNDC.current.x = (t.clientX / window.innerWidth) * 2 - 1;
-        windowMouseNDC.current.y = -(t.clientY / window.innerHeight) * 2 + 1;
+    const allMeshes = [];
+    wordGroup.children.forEach(letterGroup => {
+      letterGroup.children.forEach(mesh => {
+        mesh.userData.letterGroup = letterGroup;
+        allMeshes.push(mesh);
+      });
+    });
+
+    let hoveredGroup = null;
+
+    function updateHoverPick() {
+      raycaster.setFromCamera(pointerNDC, camera);
+      const hits = raycaster.intersectObjects(allMeshes, false);
+      hoveredGroup = hits.length ? hits[0].object.userData.letterGroup : null;
+    }
+
+    const handleResize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      fitCamera();
+    };
+    window.addEventListener("resize", handleResize);
+
+    /* ============================================================
+       Animation loop
+       ============================================================ */
+    const clock = new THREE.Clock();
+    let curX = curTX, curY = curTY;
+    let animationFrameId;
+
+    function animate() {
+      animationFrameId = requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+
+      updateHoverPick();
+
+      curRotY += (targetRotY - curRotY) * 0.06;
+      curRotX += (targetRotX - curRotX) * 0.06;
+      const idle = reduceMotion ? 0 : Math.sin(t * 0.18) * 0.035;
+      wordGroup.rotation.y = curRotY + idle;
+      wordGroup.rotation.x = -curRotX;
+
+      wordGroup.children.forEach(lg => {
+        const target = lg === hoveredGroup ? 1 : 0;
+        lg.userData.hoverT += (target - lg.userData.hoverT) * 0.14;
+        const ht = lg.userData.hoverT;
+
+        const idleBob = reduceMotion ? 0 : Math.sin(t * 0.9 + lg.userData.floatSeed) * 0.25;
+        lg.position.y = lg.userData.baseY + ht * 3.4 + idleBob;
+        lg.rotation.z = -0.06 * ht;
+        lg.scale.setScalar(1 + ht * 0.09);
+
+        lg.children.forEach(mesh => {
+          mesh.material.color.copy(mesh.userData.baseColor).lerp(mesh.userData.emberColor, ht);
+          mesh.material.emissive.copy(baseEmissive).lerp(mesh.userData.emberColor.clone().multiplyScalar(0.6), ht);
+          mesh.material.emissiveIntensity = 0.4 + ht * 1.6;
+          mesh.material.roughness = 0.32 - ht * 0.12;
+        });
+      });
+
+      if (!reduceMotion) {
+        embers.children.forEach(e => {
+          e.position.y += e.userData.speed * 0.05;
+          e.position.x += Math.sin(t * 0.4 + e.userData.drift) * 0.02;
+          if (e.position.y > 55) e.position.y = -35;
+          e.material.opacity = e.userData.baseOpacity * (0.6 + 0.4 * Math.sin(t * 1.5 + e.userData.drift));
+        });
       }
-    };
 
-    const handleMouseDown = () => {
-      spawnShockwaveFlag.current = true;
-    };
+      renderer.render(scene, camera);
+    }
 
-    window.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseleave', handleMouseLeave);
-    window.addEventListener('touchmove', handleTouchMove, { passive: true });
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('touchstart', handleMouseDown, { passive: true });
+    animate();
 
+    // Clean up WebGL resources and global listeners on unmount
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseleave', handleMouseLeave);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('mousedown', handleMouseDown);
-      window.removeEventListener('touchstart', handleMouseDown);
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener("pointermove", handlePointerMoveGlobal);
+      window.removeEventListener("touchmove", handleTouchMoveGlobal);
+      window.removeEventListener("resize", handleResize);
+
+      // Recursive cleanup
+      scene.traverse((object) => {
+        if (!object.isMesh) return;
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(m => m.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      });
+      renderer.dispose();
     };
   }, []);
 
-  useFrame((state) => {
-    const elapsed = state.clock.getElapsedTime();
-    const posArray = geometryRef.current?.attributes.position.array;
-    if (!posArray) return;
-
-    // Update time uniforms
-    mainUniforms.uTime.value = elapsed;
-
-    // Raycast global window-level pointer coordinates onto Z=0 plane
-    const mouseWorldPos = new THREE.Vector3();
-    const interactionPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-    
-    state.raycaster.setFromCamera(windowMouseNDC.current, state.camera);
-    state.raycaster.ray.intersectPlane(interactionPlane, mouseWorldPos);
-
-    // Camera organic lag drift based on cursor movement
-    camera.position.x += (targetCam.current.x - camera.position.x) * 0.03;
-    camera.position.y += (targetCam.current.y - camera.position.y) * 0.03;
-    camera.lookAt(0, 0, 0);
-
-    // Process click-triggered shockwave spawning
-    if (spawnShockwaveFlag.current && isMouseActive.current) {
-      shockwaves.current.push({
-        origin: mouseWorldPos.clone(),
-        birth: elapsed
-      });
-      if (shockwaves.current.length > 6) shockwaves.current.shift(); // concurrent wave cap
-      spawnShockwaveFlag.current = false;
-    }
-
-    // Responsive scaling factor enlarged by request (+22% larger sizing)
-    // We target filling ~90% of viewport width or ~55% of viewport height
-    const scaleX = (viewport.width * 0.90) / bounds.width;
-    const scaleY = (viewport.height * 0.55) / bounds.height;
-    
-    // Choose the bounding scale, and cap it at the optimal full-screen scale
-    const rawScale = Math.min(scaleX, scaleY);
-    const finalScale = Math.min(rawScale, 0.056); // Enlarged cap from 0.045 to 0.056
-
-    // Dynamic Physics parameters matching index (1).html
-    const REPEL_RADIUS = 10.0;
-    const REPEL_STRENGTH = 22.0;
-    const SWIRL_STRENGTH = 14.0;
-    const SPRING_STRENGTH = 0.055;
-    const DAMPING = 0.90;
-
-    for (let i = 0; i < particles.length; i++) {
-      const p = particles[i];
-      const idx3 = i * 3;
-
-      const px = posArray[idx3];
-      const py = posArray[idx3 + 1];
-      const pz = posArray[idx3 + 2];
-
-      // Responsive target/origin mapping
-      const ox = p.ox * finalScale;
-      const oy = p.oy * finalScale;
-      const oz = p.oz * finalScale;
-
-      // 1. Elastic spring pulling back toward the grid home position
-      let fx = (ox - px) * (SPRING_STRENGTH * p.speedFactor);
-      let fy = (oy - py) * (SPRING_STRENGTH * p.speedFactor);
-      let fz = (oz - pz) * (SPRING_STRENGTH * p.speedFactor);
-
-      // 2. Mouse magnetic vortex (repulsion + swirl curl)
-      if (isMouseActive.current) {
-        const dx = px - mouseWorldPos.x;
-        const dy = py - mouseWorldPos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist < REPEL_RADIUS) {
-          const falloff = 1.0 - dist / REPEL_RADIUS;
-          const invDist = 1.0 / (dist + 0.0001);
-
-          // Push particles away (radial outward force)
-          const repelForce = falloff * falloff * REPEL_STRENGTH * p.speedFactor;
-          fx += dx * invDist * repelForce;
-          fy += dy * invDist * repelForce;
-
-          // Tangential swirl vector -> gorgeous fluid vortex feel
-          const swirlForce = falloff * SWIRL_STRENGTH * p.speedFactor;
-          fx += -dy * invDist * swirlForce;
-          fy +=  dx * invDist * swirlForce;
-
-          // Scatter slightly on Z during repulsion
-          fz += (Math.random() - 0.5) * repelForce * 0.15;
-        }
-      }
-
-      // 3. Shockwave rings processing
-      for (let s = 0; s < shockwaves.current.length; s++) {
-        const wave = shockwaves.current[s];
-        const age = elapsed - wave.birth;
-        if (age < 0 || age > SHOCK_LIFE) continue;
-
-        const ringRadius = age * SHOCK_SPEED;
-        const dxw = px - wave.origin.x;
-        const dyw = py - wave.origin.y;
-        const distw = Math.sqrt(dxw * dxw + dyw * dyw);
-        const ringDist = Math.abs(distw - ringRadius);
-
-        if (ringDist < SHOCK_WIDTH) {
-          const ringFalloff = 1.0 - ringDist / SHOCK_WIDTH;
-          const lifeFade = 1.0 - age / SHOCK_LIFE;
-          const invDistw = 1.0 / (distw + 0.0001);
-          const force = ringFalloff * lifeFade * SHOCK_STRENGTH * p.speedFactor;
-          
-          fx += dxw * invDistw * force;
-          fy += dyw * invDistw * force;
-        }
-      }
-
-      // Physics integration
-      p.vx = (p.vx + fx) * DAMPING;
-      p.vy = (p.vy + fy) * DAMPING;
-      p.vz = (p.vz + fz) * DAMPING;
-
-      posArray[idx3]     += p.vx;
-      posArray[idx3 + 1] += p.vy;
-      posArray[idx3 + 2] += p.vz;
-    }
-
-    // Flag geometry's attributes as dirty
-    geometryRef.current.attributes.position.needsUpdate = true;
-
-    // Prune completed shockwaves
-    while (shockwaves.current.length && (elapsed - shockwaves.current[0].birth) > SHOCK_LIFE) {
-      shockwaves.current.shift();
-    }
-  });
-
   return (
-    <group>
-      {/* Main Interactive Word Points */}
-      <points>
-        <bufferGeometry ref={geometryRef}>
-          <bufferAttribute
-            attach="attributes-position"
-            args={[positionAttr, 3]}
-          />
-          <bufferAttribute
-            attach="attributes-aRandom"
-            args={[randomAttr, 1]}
-          />
-          <bufferAttribute
-            attach="attributes-aSize"
-            args={[sizeAttr, 1]}
-          />
-          <bufferAttribute
-            attach="attributes-aColorMix"
-            args={[colorMixAttr, 1]}
-          />
-        </bufferGeometry>
-        <shaderMaterial
-          ref={mainMaterialRef}
-          vertexShader={vertexShader}
-          fragmentShader={fragmentShader}
-          uniforms={mainUniforms}
-          transparent={true}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </points>
-    </group>
-  );
-}
+    <div 
+      className="absolute inset-0 z-0 pointer-events-none" 
+      style={{ 
+        overflow: 'hidden',
+        background: 'radial-gradient(ellipse 110% 85% at 50% 20%, #2b1710 0%, #17100b 42%, #0b0806 75%)'
+      }}
+    >
+      {/* 3D Canvas */}
+      <canvas ref={canvasRef} className="absolute inset-0 block w-full h-full" />
 
-// --- CORE CONTAINER EXPORT ---
-export default function InteractiveBackgroundA({ text = "APTEKA" }) {
-  return (
-    <div className="absolute inset-0 w-full h-full pointer-events-none z-0 opacity-70">
-      <Canvas
-        camera={{ position: [0, 0, 60], fov: 55 }}
-        dpr={[1, 2]}
-        gl={{ antialias: true, alpha: true }}
-      >
-        {/* Cinematic Starfield Background */}
-        <BiotechStarfield />
-        
-        {/* Interactive Word system (reflection and grid helper removed on user's request) */}
-        <ParticleWord text={text} />
-      </Canvas>
+      {/* Vignette */}
+      <div 
+        className="absolute inset-0 pointer-events-none z-[5]" 
+        style={{
+          boxShadow: 'inset 0 0 20vw 3vw rgba(5,3,2,0.92)'
+        }} 
+      />
+
+      {/* Grain */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-[0.045] mix-blend-overlay z-[6]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`
+        }}
+      />
     </div>
   );
 }
