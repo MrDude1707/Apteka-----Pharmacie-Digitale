@@ -69,7 +69,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
     }
   };
 
-  // Update order status (ex: PAYEE -> EN_ROUTE -> LIVREE)
+  // Update order status
   const handleUpdateCommandeStatus = async (commandeId, nextStatus) => {
     try {
       const token = localStorage.getItem('token');
@@ -128,7 +128,6 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
         };
         setFoundOrdonnance(parsedData);
         
-        // Exécuter un pré-contrôle des stocks locaux pour cette ordonnance
         runLocalStockPrecheck(parsedData);
       }
     } catch (err) {
@@ -142,7 +141,6 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
   const runLocalStockPrecheck = async (ordonnance) => {
     try {
       const token = localStorage.getItem('token');
-      // Charger les stocks actuels pour comparer
       const res = await fetch(`${API_URL}/api/pharmacien/stocks`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -204,14 +202,11 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
         setError(data.error || "La délivrance a échoué.");
       } else {
         setSuccess(data.message);
-        // Mettre à jour l'état de l'ordonnance affichée
         setFoundOrdonnance({
           ...foundOrdonnance,
           status: 'DELIVREE',
           dateDelivrance: new Date()
         });
-
-        // Recharger le code de recherche
         setSearchCode('');
       }
     } catch (err) {
@@ -285,99 +280,100 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
           <div className="xl:col-span-7 flex flex-col gap-6">
             
             {/* Boîte de recherche avec animation de scan laser */}
-            <div className="p-6 rounded-3xl bg-white/50 backdrop-blur-md border border-slate-200/50 shadow-sm flex flex-col gap-4 relative overflow-hidden">
+            <div className="p-8 rounded-[24px] glass-premium-dark shadow-sm flex flex-col gap-4 relative overflow-hidden">
               {searching && (
                 <>
                   <div className="scan-laser-line" />
-                  <div className="absolute inset-0 hologram-overlay z-0 pointer-events-none" />
+                  <div className="absolute inset-0 hologram-overlay z-0 pointer-events-none opacity-50" />
                 </>
               )}
               
               <div className="relative z-10 flex flex-col gap-1">
-                <span className="text-[10px] font-black tracking-widest text-teal-600 uppercase">Analyseur RFID / QR Code</span>
-                <h3 className="text-base font-extrabold text-slate-800 tracking-tight">Recherche de Prescription Certifiée</h3>
-                <p className="text-xs text-slate-500 mt-1 font-semibold leading-relaxed">Saisissez le code unique ORD-XXXX présenté par le patient pour charger la prescription certifiée :</p>
+                <span className="text-[10px] font-black tracking-widest text-[#00f0ff] uppercase">Analyseur RFID / QR Code</span>
+                <h3 className="text-3xl font-light text-white tracking-tight">Recherche Certifiée</h3>
+                <p className="text-sm text-white/50 mt-1 font-medium leading-relaxed">Saisissez le code unique ORD-XXXX présenté par le patient pour charger la prescription certifiée :</p>
               </div>
               
-              <form onSubmit={handleSearchOrdonnance} className="flex gap-2 relative z-10 mt-1">
+              <form onSubmit={handleSearchOrdonnance} className="flex gap-4 relative z-10 mt-3">
                 <div className="relative flex-1">
-                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
                   <input
                     type="text"
                     required
-                    placeholder="Saisir le code d'ordonnance (ex: ORD-4927)..."
+                    placeholder="Saisir le code (ex: ORD-4927)..."
                     value={searchCode}
                     onChange={(e) => setSearchCode(e.target.value.toUpperCase())}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-teal-500 focus:outline-none text-xs transition-all font-mono tracking-wider font-extrabold text-slate-800 bg-white"
+                    className="w-full pl-14 pr-4 py-4 rounded-xl bg-black/40 border border-white/10 focus:border-[#00f0ff] focus:outline-none text-sm font-mono tracking-[4px] font-black text-[#00f0ff] placeholder-white/30 transition-colors cursor-none uppercase"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={searching}
-                  className="px-6 py-3 bg-slate-900 hover:bg-teal-500 disabled:bg-slate-100 disabled:text-slate-400 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+                  className="px-8 py-4 bg-white hover:bg-[#00f0ff] disabled:bg-white/5 disabled:text-white/20 text-black rounded-xl text-sm font-bold uppercase tracking-widest transition-all flex items-center gap-3 cursor-none shadow-xl"
+                  data-cursor-magnet
                 >
-                  <Search size={14} />
+                  <Search size={18} />
                   {searching ? "Analyse..." : "Vérifier"}
                 </button>
               </form>
 
-              {searchError && <p className="text-red-500 text-xs font-bold relative z-10 mt-1">❌ {searchError}</p>}
+              {searchError && <p className="text-red-400 text-xs font-bold relative z-10 mt-2">❌ {searchError}</p>}
             </div>
 
             {/* Détails de l'ordonnance chargée */}
             {foundOrdonnance && (
-              <div className="p-6 rounded-3xl bg-white/50 backdrop-blur-md border border-slate-200/50 shadow-sm flex flex-col gap-5 animate-in fade-in duration-300">
-                <div className="border-b border-slate-100 pb-3.5 flex justify-between items-start">
+              <div className="p-8 rounded-[24px] glass-premium-dark shadow-sm flex flex-col gap-6 animate-in fade-in duration-300">
+                <div className="border-b border-white/10 pb-5 flex justify-between items-start">
                   <div>
-                    <span className="text-[9px] font-black text-teal-600 uppercase tracking-widest block">Prescription Authentifiée</span>
-                    <h4 className="text-sm font-mono font-black text-slate-800 tracking-wider mt-0.5">{foundOrdonnance.code}</h4>
+                    <span className="text-[10px] font-black text-[#00f0ff] uppercase tracking-widest block">Prescription Authentifiée</span>
+                    <h4 className="text-2xl font-mono font-light text-white tracking-widest mt-1">{foundOrdonnance.code}</h4>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-[9px] uppercase font-black tracking-wider ${
-                    foundOrdonnance.status === 'DELIVREE' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'
+                  <span className={`px-4 py-2 rounded-xl text-[10px] uppercase font-black tracking-widest ${
+                    foundOrdonnance.status === 'DELIVREE' ? 'bg-green-500/10 text-green-400 border border-green-500/30' : 'bg-orange-500/10 text-orange-400 border border-orange-500/30'
                   }`}>
                     {foundOrdonnance.status === 'DELIVREE' ? 'Délivrée' : 'En Attente de retrait'}
                   </span>
                 </div>
 
                 {/* Métadonnées Médecin / Patient */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-slate-100/50 p-4 rounded-2xl border border-slate-200/50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm bg-black/30 p-5 rounded-[20px] border border-white/5">
                   <div className="text-left">
-                    <span className="text-slate-400 text-[9px] uppercase tracking-widest font-black block mb-1">Médecin Prescripteur</span>
-                    <b className="font-extrabold text-slate-800">Dr. {foundOrdonnance.medecin.firstName} {foundOrdonnance.medecin.lastName}</b>
-                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">{foundOrdonnance.medecin.email}</p>
+                    <span className="text-white/40 text-[10px] uppercase tracking-widest font-black block mb-2">Médecin Prescripteur</span>
+                    <b className="font-light text-xl text-white">Dr. {foundOrdonnance.medecin.firstName} {foundOrdonnance.medecin.lastName}</b>
+                    <p className="text-xs text-white/50 font-medium mt-1">{foundOrdonnance.medecin.email}</p>
                   </div>
-                  <div className="text-left border-t sm:border-t-0 sm:border-l border-slate-100 pt-3 sm:pt-0 sm:pl-4">
-                    <span className="text-slate-400 text-[9px] uppercase tracking-widest font-black block mb-1">Patient bénéficiaire</span>
-                    <b className="font-extrabold text-slate-800">{foundOrdonnance.patient.firstName} {foundOrdonnance.patient.lastName}</b>
-                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">{foundOrdonnance.patient.email}</p>
+                  <div className="text-left border-t sm:border-t-0 sm:border-l border-white/5 pt-4 sm:pt-0 sm:pl-5">
+                    <span className="text-white/40 text-[10px] uppercase tracking-widest font-black block mb-2">Patient bénéficiaire</span>
+                    <b className="font-light text-xl text-white">{foundOrdonnance.patient.firstName} {foundOrdonnance.patient.lastName}</b>
+                    <p className="text-xs text-white/50 font-medium mt-1">{foundOrdonnance.patient.email}</p>
                   </div>
                 </div>
 
                 {/* Liste des médicaments prescrits */}
-                <div className="flex flex-col gap-2">
-                  <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Médicaments à délivrer :</h5>
-                  <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 mt-2">
+                  <h5 className="text-[10px] font-black text-white/40 uppercase tracking-widest text-left">Médicaments à délivrer :</h5>
+                  <div className="flex flex-col gap-4">
                     {foundOrdonnance.medicaments.map((med, idx) => (
-                      <div key={idx} className="p-4 rounded-2xl bg-white/60 border border-slate-200/30 text-xs flex flex-col gap-2.5 text-left">
-                        <div className="flex justify-between items-start gap-2">
-                          <span className="font-extrabold text-slate-850 text-sm">{med.nom}</span>
-                          <span className="text-[10px] font-black text-teal-700 bg-teal-50 px-3 py-1 rounded-xl border border-teal-100/60 font-semibold">
-                            Requis : {med.quantite} boîte(s)
+                      <div key={idx} className="p-5 rounded-[20px] bg-white/5 border border-white/10 text-sm flex flex-col gap-3 text-left">
+                        <div className="flex justify-between items-start gap-4">
+                          <span className="font-bold text-white text-lg">{med.nom}</span>
+                          <span className="text-[10px] font-black text-[#00f0ff] bg-[#00f0ff]/10 px-4 py-2 rounded-xl border border-[#00f0ff]/20 uppercase tracking-widest">
+                            Requis : {med.quantite}
                           </span>
                         </div>
-                        <div className="grid grid-cols-2 gap-3 bg-white p-3 rounded-xl border border-slate-200/30 text-[10px] font-medium text-slate-500">
+                        <div className="grid grid-cols-2 gap-4 bg-black/40 p-4 rounded-xl border border-white/5 text-xs font-medium text-white/60">
                           <div>
-                            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Dosage</span>
-                            <p className="font-bold text-slate-800 mt-0.5">{med.dosage || "1 comprimé"}</p>
+                            <span className="text-[9px] font-black uppercase text-white/40 tracking-widest block mb-1">Dosage</span>
+                            <p className="font-bold text-white">{med.dosage || "1 comprimé"}</p>
                           </div>
                           <div>
-                            <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Instructions (Posologie)</span>
-                            <p className="font-bold text-slate-800 mt-0.5">{med.posologie}</p>
+                            <span className="text-[9px] font-black uppercase text-white/40 tracking-widest block mb-1">Posologie</span>
+                            <p className="font-bold text-white">{med.posologie}</p>
                           </div>
                         </div>
                         {med.duree && (
-                          <div className="text-[10px] font-bold text-slate-400">
-                            Durée recommandée : <span className="font-black text-teal-600 bg-teal-50 border border-teal-100/60 px-2.5 py-0.5 rounded-lg ml-1">{med.duree}</span>
+                          <div className="text-xs font-medium text-white/40 mt-1">
+                            Durée : <span className="font-bold text-[#00f0ff] uppercase tracking-widest ml-1">{med.duree}</span>
                           </div>
                         )}
                       </div>
@@ -391,10 +387,12 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
           {/* Module de vérification des stocks et validation de la délivrance */}
           {foundOrdonnance && (
             <div className="xl:col-span-5 flex flex-col gap-6 animate-in fade-in duration-300">
-              <div className="p-6 rounded-3xl bg-white/50 backdrop-blur-md border border-slate-200/50 shadow-sm flex flex-col gap-5 sticky top-24">
-                <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
-                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Contrôle de l'Inventaire</h4>
-                  <span className="text-[9px] font-black text-teal-600 bg-teal-50 px-2.5 py-0.5 rounded-full uppercase">Temps Réel</span>
+              <div className="p-8 rounded-[24px] glass-premium-dark shadow-sm flex flex-col gap-6 sticky top-24">
+                <div className="border-b border-white/10 pb-4 flex justify-between items-center">
+                  <h4 className="text-xs font-black text-white/40 uppercase tracking-widest">Contrôle Inventaire</h4>
+                  <span className="text-[9px] font-black text-[#00f0ff] bg-[#00f0ff]/10 border border-[#00f0ff]/20 px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1.5 animate-pulse">
+                    <span className="w-1.5 h-1.5 bg-[#00f0ff] rounded-full"></span> Temps Réel
+                  </span>
                 </div>
 
                 {/* Comparatif de stocks pour chaque produit */}
@@ -402,29 +400,29 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
                   {stockStatus.map((item, idx) => {
                     const pct = item.disponible > 0 ? Math.min((item.disponible / item.requis) * 100, 100) : 0;
                     return (
-                      <div key={idx} className="p-4 rounded-2xl bg-white/60 border border-slate-200/30 text-xs flex flex-col gap-2 text-left">
-                        <div className="flex justify-between items-center font-extrabold">
-                          <span className="text-slate-800 max-w-[150px] truncate leading-tight font-black">{item.nom}</span>
-                          <span className={`text-[9px] uppercase font-black px-2.5 py-0.5 rounded-lg shrink-0 ${
-                            item.canDeliver ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-500'
+                      <div key={idx} className="p-5 rounded-[20px] bg-white/5 border border-white/10 text-sm flex flex-col gap-3 text-left">
+                        <div className="flex justify-between items-center font-bold">
+                          <span className="text-white max-w-[180px] truncate leading-tight">{item.nom}</span>
+                          <span className={`text-[9px] uppercase font-black px-3 py-1.5 rounded-lg shrink-0 ${
+                            item.canDeliver ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
                           }`}>
                             {item.canDeliver ? 'Disponible' : 'Insuffisant'}
                           </span>
                         </div>
                         
                         {/* Progress Stock Health Bar */}
-                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-1">
+                        <div className="w-full bg-white/5 h-2.5 rounded-full overflow-hidden mt-1 border border-white/5">
                           <div 
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              item.canDeliver ? 'bg-teal-500' : 'bg-rose-500 animate-pulse'
+                            className={`h-full rounded-full transition-all duration-700 ease-out ${
+                              item.canDeliver ? 'bg-[#00f0ff]' : 'bg-red-500 animate-pulse'
                             }`}
                             style={{ width: `${pct}%` }}
                           />
                         </div>
 
-                        <div className="flex justify-between text-[10px] font-bold text-slate-400 mt-1">
-                          <span className="flex items-center gap-1">Requis : <strong className="font-extrabold text-slate-800">{item.requis}</strong></span>
-                          <span className="flex items-center gap-1">En Stock : <strong className={`font-extrabold ${item.canDeliver ? 'text-slate-850' : 'text-rose-500'}`}>{item.disponible}</strong></span>
+                        <div className="flex justify-between text-[11px] font-medium text-white/50 mt-1">
+                          <span className="flex items-center gap-1.5 uppercase tracking-widest">Requis : <strong className="font-black text-white">{item.requis}</strong></span>
+                          <span className="flex items-center gap-1.5 uppercase tracking-widest">Stock : <strong className={`font-black ${item.canDeliver ? 'text-[#00f0ff]' : 'text-red-400'}`}>{item.disponible}</strong></span>
                         </div>
                       </div>
                     );
@@ -433,51 +431,52 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
 
                 {/* État global */}
                 {foundOrdonnance.status === 'DELIVREE' ? (
-                  <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-100/60 flex flex-col gap-2 text-center text-emerald-800 text-xs font-semibold shadow-inner">
-                    <CheckCircle2 size={28} className="text-emerald-500 mx-auto" />
-                    <p className="font-black text-sm text-slate-850">Délivrée avec Succès !</p>
-                    <p className="text-[10px] text-slate-400 mt-1 leading-normal">
-                      Les médicaments ont été remis au patient et les stocks de l'officine ont été mis à jour instantanément.
+                  <div className="p-6 rounded-[20px] bg-green-500/10 border border-green-500/20 flex flex-col gap-3 text-center text-green-400 text-sm font-medium">
+                    <CheckCircle2 size={36} className="text-green-400 mx-auto" />
+                    <p className="font-black text-lg text-white">Délivrée avec Succès !</p>
+                    <p className="text-[11px] text-green-200/50 mt-1 leading-relaxed max-w-[250px] mx-auto">
+                      Les médicaments ont été remis au patient. Stocks mis à jour.
                     </p>
                   </div>
                 ) : canDeliverAll ? (
-                  <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 flex flex-col gap-1.5 text-xs text-emerald-800 text-left">
-                    <div className="flex items-center gap-1.5 font-black text-emerald-700">
-                      <CheckCircle2 size={16} />
-                      <span>Validation d'officine prête</span>
+                  <div className="p-5 rounded-[20px] bg-[#00f0ff]/10 border border-[#00f0ff]/20 flex flex-col gap-2 text-sm text-[#00f0ff] text-left">
+                    <div className="flex items-center gap-3 font-black text-lg text-white">
+                      <ShieldCheck size={20} className="text-[#00f0ff]" />
+                      <span>Validation Prête</span>
                     </div>
-                    <p className="text-[10px] text-slate-450 font-semibold leading-normal">
-                      Votre inventaire local dispose de tous les produits requis. Vous pouvez valider la délivrance en toute sécurité.
+                    <p className="text-xs text-white/50 font-medium leading-relaxed mt-1">
+                      Votre inventaire local dispose de tous les produits requis. Vous pouvez valider la délivrance physique.
                     </p>
                   </div>
                 ) : (
-                  <div className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 flex flex-col gap-1.5 text-xs text-rose-800 text-left">
-                    <div className="flex items-center gap-1.5 font-black text-rose-700">
-                      <AlertTriangle size={16} />
-                      <span>Rupture d'inventaire détectée</span>
+                  <div className="p-5 rounded-[20px] bg-red-500/10 border border-red-500/20 flex flex-col gap-2 text-sm text-red-400 text-left">
+                    <div className="flex items-center gap-3 font-black text-lg text-white">
+                      <AlertTriangle size={20} className="text-red-500" />
+                      <span>Rupture d'Inventaire</span>
                     </div>
-                    <p className="text-[10px] text-slate-450 font-semibold leading-normal">
-                      Votre officine ne possède pas le stock suffisant pour couvrir cette ordonnance. Veuillez réapprovisionner via l'onglet Inventaire.
+                    <p className="text-xs text-white/50 font-medium leading-relaxed mt-1">
+                      Votre officine ne possède pas le stock suffisant pour couvrir cette ordonnance. Veuillez réapprovisionner l'inventaire.
                     </p>
                   </div>
                 )}
 
                 {success && (
-                  <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-center text-[11px] font-black text-emerald-600 animate-pulse uppercase tracking-wider">
+                  <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-center text-xs font-black text-green-400 animate-pulse uppercase tracking-widest mt-2">
                     {success}
                   </div>
                 )}
-                {error && <p className="text-red-500 text-xs font-bold text-center">❌ {error}</p>}
+                {error && <p className="text-red-400 text-xs font-bold text-center mt-2">❌ {error}</p>}
 
                 {foundOrdonnance.status !== 'DELIVREE' && (
                   <button
                     type="button"
                     onClick={handleDeliverOrdonnance}
                     disabled={!canDeliverAll || delivering}
-                    className="w-full py-4 rounded-xl bg-gradient-to-r from-teal-500 to-sky-500 text-white text-xs font-black shadow-lg shadow-teal-500/15 transition-all flex items-center justify-center gap-2 cursor-pointer focus:outline-none"
+                    className="w-full py-5 rounded-xl bg-gradient-to-r from-[#00f0ff] to-blue-500 hover:from-[#00c0cc] hover:to-blue-600 disabled:from-white/10 disabled:to-white/10 disabled:text-white/20 text-black text-sm font-bold uppercase tracking-widest shadow-xl shadow-[#00f0ff]/20 transition-all flex items-center justify-center gap-3 cursor-none mt-2"
+                    data-cursor-magnet
                   >
-                    <ShieldCheck size={14} />
-                    {delivering ? "Mise à jour des registres..." : "Valider la délivrance physique"}
+                    <ShieldCheck size={18} />
+                    {delivering ? "Enregistrement..." : "Valider la délivrance"}
                   </button>
                 )}
               </div>
@@ -489,31 +488,32 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
 
       {/* 2. COMMANDES ET LIVRAISONS OFFICINE */}
       {activeTab === 'pharmacien_deliveries' && (
-        <div className="max-w-4xl mx-auto flex flex-col gap-6 animate-in fade-in duration-300 text-left">
-          <div className="text-left bg-white/40 p-5 border border-slate-200/40 rounded-2xl shadow-sm flex justify-between items-center">
+        <div className="max-w-5xl mx-auto flex flex-col gap-8 animate-in fade-in duration-300 text-left">
+          <div className="text-left glass-premium-dark p-8 rounded-[24px] flex justify-between items-center">
             <div>
-              <h3 className="text-lg font-black text-slate-850">Suivi des Commandes & Expéditions</h3>
-              <p className="text-xs text-slate-500 mt-1">Gérez et préparez les commandes payées par vos patients via Stripe.</p>
+              <h3 className="text-3xl font-light text-white tracking-tight">Suivi des Commandes & Expéditions</h3>
+              <p className="text-sm text-white/50 mt-2 font-medium">Gérez et préparez les commandes payées par vos patients via Stripe.</p>
             </div>
             <button
               onClick={fetchPharmacyCommandes}
               disabled={loadingCommandes}
-              className="p-2.5 bg-white border border-slate-200/60 rounded-xl hover:bg-slate-50 text-slate-600 hover:text-teal-600 transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
+              className="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 text-white/70 transition-colors shrink-0 disabled:opacity-50 cursor-none"
+              data-cursor-magnet
             >
-              <RefreshCw size={16} className={loadingCommandes ? 'animate-spin' : ''} />
+              <RefreshCw size={20} className={loadingCommandes ? 'animate-spin' : ''} />
             </button>
           </div>
 
           {loadingCommandes && commandes.length === 0 ? (
-            <div className="py-20 text-center text-slate-500 flex flex-col items-center justify-center gap-3 bg-white/40 border border-slate-200/40 rounded-[2rem]">
-              <RefreshCw size={36} className="animate-spin text-teal-500/60" />
-              <p className="text-xs font-semibold">Chargement des commandes de la pharmacie...</p>
+            <div className="py-24 text-center text-white/50 flex flex-col items-center justify-center gap-4 glass-premium-dark rounded-[32px]">
+              <RefreshCw size={48} className="animate-spin text-[#00f0ff]/60" />
+              <p className="text-sm font-medium tracking-widest uppercase">Synchronisation des flux...</p>
             </div>
           ) : commandes.length === 0 ? (
-            <div className="py-16 bg-white/45 backdrop-blur-md border border-slate-200/50 rounded-3xl text-center text-slate-450 flex flex-col items-center justify-center gap-3">
-              <Package size={42} className="text-teal-500/30" />
-              <p className="text-sm font-extrabold text-slate-800">Aucune commande enregistrée</p>
-              <p className="text-xs text-slate-500 max-w-sm">
+            <div className="py-24 glass-premium-dark rounded-[32px] text-center text-white/40 flex flex-col items-center justify-center gap-4">
+              <Package size={64} className="text-[#00f0ff]/30" />
+              <p className="text-2xl font-light text-white">Aucune commande enregistrée</p>
+              <p className="text-sm text-white/40 max-w-md mt-2">
                 Aucun patient n'a encore passé de commande en ligne pour votre officine. Dès qu'un paiement Stripe est validé, il s'affichera ici.
               </p>
             </div>
@@ -531,38 +531,38 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
                 const patientZone = profile.zone || "Zone N/A";
 
                 return (
-                  <div key={cmd.id} className="p-6 bg-white/60 backdrop-blur-md border border-slate-200/40 rounded-[2rem] shadow-sm flex flex-col gap-5 text-left hover:border-teal-500/25 transition-colors">
-                    <div className="flex flex-wrap justify-between items-start gap-4 border-b border-slate-100 pb-4">
+                  <div key={cmd.id} className="p-8 glass-premium-dark rounded-[32px] flex flex-col gap-6 text-left hover:border-[#00f0ff]/20 transition-all">
+                    <div className="flex flex-wrap justify-between items-start gap-4 border-b border-white/10 pb-5">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Commande : #{cmd.id.slice(0, 8)}</span>
-                          {cmd.status === "PAYEE" && <span className="bg-amber-100 text-amber-700 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full font-black">📦 En préparation</span>}
-                          {cmd.status === "EN_ROUTE" && <span className="bg-sky-100 text-sky-700 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full font-black">🛵 En livraison</span>}
-                          {cmd.status === "LIVREE" && <span className="bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full font-black">✅ Livrée</span>}
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] font-black text-[#00f0ff] uppercase tracking-widest">Commande : #{cmd.id.slice(0, 8)}</span>
+                          {cmd.status === "PAYEE" && <span className="bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[9px] font-black uppercase px-3 py-1 rounded-lg">📦 En préparation</span>}
+                          {cmd.status === "EN_ROUTE" && <span className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[9px] font-black uppercase px-3 py-1 rounded-lg">🛵 En livraison</span>}
+                          {cmd.status === "LIVREE" && <span className="bg-green-500/10 border border-green-500/20 text-green-400 text-[9px] font-black uppercase px-3 py-1 rounded-lg">✅ Livrée</span>}
                         </div>
-                        <h4 className="text-base font-black text-slate-800 mt-2">Destinataire : {patientName}</h4>
-                        <p className="text-[11px] text-slate-550 font-semibold flex items-center gap-1.5 mt-1">
-                          📍 Quartier: <span className="font-extrabold text-slate-700">{patientZone}</span> • 📞 Tél: <span className="font-extrabold text-slate-700">{patientPhone}</span>
+                        <h4 className="text-2xl font-light text-white mt-3">Destinataire : <span className="font-bold">{patientName}</span></h4>
+                        <p className="text-xs text-white/50 font-medium flex items-center gap-2 mt-2">
+                          📍 Quartier: <span className="font-bold text-[#00f0ff]">{patientZone}</span> • 📞 Tél: <span className="font-bold text-white/70">{patientPhone}</span>
                         </p>
                       </div>
                       
                       <div className="text-right shrink-0">
-                        <span className="text-sm text-slate-400 font-bold block">{dateText}</span>
-                        <span className="text-base font-black text-teal-600 block mt-1">{cmd.total.toFixed(2)} €</span>
+                        <span className="text-xs text-white/40 font-bold uppercase tracking-widest block">{dateText}</span>
+                        <span className="text-3xl font-light text-white block mt-2">{cmd.total.toFixed(2)} €</span>
                       </div>
                     </div>
 
                     {/* DÉTAIL DES PRODUITS DE LA COMMANDE */}
-                    <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Médicaments à préparer :</span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className="flex flex-col gap-3">
+                      <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Médicaments à préparer :</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {items.map((it, idx) => (
-                          <div key={idx} className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 flex justify-between items-center gap-2">
+                          <div key={idx} className="p-4 bg-white/5 rounded-[16px] border border-white/10 flex justify-between items-center gap-3">
                             <div className="truncate">
-                              <p className="font-extrabold text-slate-800 text-xs truncate">{it.medicament.nom}</p>
-                              <p className="text-[9px] text-slate-400 mt-0.5 font-bold">Quantité requise : {it.qty || 1} boîte(s)</p>
+                              <p className="font-bold text-white text-sm truncate">{it.medicament.nom}</p>
+                              <p className="text-[10px] text-white/50 mt-1 font-black uppercase tracking-widest">Qté : {it.qty || 1}</p>
                             </div>
-                            <span className="bg-white px-2.5 py-1 rounded-lg border border-slate-100 text-[10px] text-slate-600 font-extrabold shrink-0">
+                            <span className="bg-black/40 px-3 py-1.5 rounded-lg border border-white/5 text-[11px] text-[#00f0ff] font-black shrink-0">
                               {((it.medicament.prix || 0) * (it.qty || 1)).toFixed(2)} €
                             </span>
                           </div>
@@ -571,28 +571,30 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
                     </div>
 
                     {/* ACTIONS DU PHARMACIEN */}
-                    <div className="border-t border-slate-100 pt-4 flex justify-end gap-3">
+                    <div className="border-t border-white/10 pt-6 flex justify-end gap-4 mt-2">
                       {cmd.status === "PAYEE" && (
                         <button
                           onClick={() => handleUpdateCommandeStatus(cmd.id, "EN_ROUTE")}
-                          className="px-5 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-teal-500 hover:from-sky-400 hover:to-sky-400 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-sky-500/10 transition-all cursor-pointer flex items-center gap-2 font-black"
+                          className="px-6 py-4 rounded-xl bg-white hover:bg-[#00f0ff] text-black font-bold text-xs uppercase tracking-widest shadow-xl transition-all cursor-none flex items-center gap-3"
+                          data-cursor-magnet
                         >
-                          🛵 Expédier & Confier au livreur
+                          <Package size={16} /> Expédier & Confier au livreur
                         </button>
                       )}
                       
                       {cmd.status === "EN_ROUTE" && (
                         <button
                           onClick={() => handleUpdateCommandeStatus(cmd.id, "LIVREE")}
-                          className="px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-500/10 transition-all cursor-pointer flex items-center gap-2 font-black"
+                          className="px-6 py-4 rounded-xl bg-gradient-to-r from-[#00f0ff] to-blue-500 text-black hover:from-[#00c0cc] hover:to-blue-600 font-bold text-xs uppercase tracking-widest shadow-xl shadow-[#00f0ff]/20 transition-all cursor-none flex items-center gap-3"
+                          data-cursor-magnet
                         >
-                          ✅ Confirmer la livraison réussie
+                          <CheckCircle2 size={16} /> Confirmer Livraison Réussie
                         </button>
                       )}
 
                       {cmd.status === "LIVREE" && (
-                        <span className="text-xs text-slate-400 font-extrabold flex items-center gap-1 font-black">
-                          🏆 Remis en main propre au destinataire
+                        <span className="text-xs text-white/40 font-black uppercase tracking-widest flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-green-400" /> Remis en main propre
                         </span>
                       )}
                     </div>
@@ -606,50 +608,51 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
 
       {/* 3. GESTION DES STOCKS OFFICINE */}
       {activeTab === 'pharmacien_stocks' && (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start animate-in fade-in duration-300">
           
           {/* Liste d'inventaire */}
-          <div className="xl:col-span-8 p-6 rounded-3xl bg-white/50 backdrop-blur-md border border-slate-200/50 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center justify-between">
+          <div className="xl:col-span-8 p-8 rounded-[32px] glass-premium-dark flex flex-col gap-6">
+            <div className="flex items-center justify-between border-b border-white/10 pb-5">
               <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">État de votre Inventaire Officine</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Retrouvez les stocks enregistrés dans votre base locale :</p>
+                <h3 className="text-2xl font-light text-white tracking-tight">Inventaire Local</h3>
+                <p className="text-xs text-white/50 mt-1 font-medium">Gérez les niveaux de stock physiques de votre officine :</p>
               </div>
               <button
                 onClick={fetchMyStocks}
-                className="p-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-teal-600 transition-all cursor-pointer shadow-sm"
+                className="p-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-all cursor-none shadow-sm"
                 title="Actualiser les stocks"
+                data-cursor-magnet
               >
-                <RefreshCw size={16} />
+                <RefreshCw size={18} className={loadingStocks ? "animate-spin" : ""} />
               </button>
             </div>
 
-            {loadingStocks ? (
-              <p className="text-center py-12 text-xs text-slate-500">Chargement de votre inventaire...</p>
+            {loadingStocks && myStocks.length === 0 ? (
+              <p className="text-center py-20 text-sm text-white/40 font-medium">Chargement de votre inventaire sécurisé...</p>
             ) : myStocks.length === 0 ? (
-              <p className="text-center py-12 text-xs text-slate-400">Aucun produit dans votre inventaire. Veuillez réapprovisionner.</p>
+              <p className="text-center py-20 text-sm text-white/30 font-medium">Aucun produit dans l'inventaire. Veuillez réapprovisionner.</p>
             ) : (
-              <div className="overflow-x-auto text-xs">
-                <table className="w-full text-left">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-slate-200/40 text-slate-500 uppercase text-[10px] tracking-wider">
-                      <th className="py-2.5">Médicament</th>
-                      <th className="py-2.5">Substance Active</th>
-                      <th className="py-2.5">Prix Unitaire</th>
-                      <th className="py-2.5 text-center">Quantité</th>
+                    <tr className="border-b border-white/10 text-white/30 uppercase text-[10px] tracking-widest font-black">
+                      <th className="py-4 px-4">Médicament</th>
+                      <th className="py-4 px-4">Substance Active</th>
+                      <th className="py-4 px-4">Prix Unitaire</th>
+                      <th className="py-4 px-4 text-center">Quantité</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-white/5">
                     {myStocks.map(stock => (
-                      <tr key={stock.id} className="hover:bg-teal-50/20 transition-colors">
-                        <td className="py-3 font-semibold text-slate-800">{stock.medicament.nom}</td>
-                        <td className="py-3 text-slate-500 text-[11px] font-semibold">{stock.medicament.substanceActive || "N/A"}</td>
-                        <td className="py-3 text-slate-500 font-semibold">{stock.medicament.prix ? `${stock.medicament.prix.toFixed(2)} €` : "N/A"}</td>
-                        <td className="py-3 text-center">
-                          <span className={`inline-block font-bold px-2.5 py-0.5 rounded-full ${
-                            stock.quantite > 50 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                      <tr key={stock.id} className="hover:bg-white/5 transition-colors">
+                        <td className="py-5 px-4 font-bold text-white text-base">{stock.medicament.nom}</td>
+                        <td className="py-5 px-4 text-white/50 text-[11px] font-bold uppercase tracking-wider">{stock.medicament.substanceActive || "N/A"}</td>
+                        <td className="py-5 px-4 text-[#00f0ff] font-light text-lg">{stock.medicament.prix ? `${stock.medicament.prix.toFixed(2)} €` : "N/A"}</td>
+                        <td className="py-5 px-4 text-center">
+                          <span className={`inline-block font-black px-4 py-2 rounded-xl text-xs ${
+                            stock.quantite > 50 ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
                           }`}>
-                            {stock.quantite} boîte(s)
+                            {stock.quantite}
                           </span>
                         </td>
                       </tr>
@@ -661,49 +664,52 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
           </div>
 
           {/* Formulaire de réapprovisionnement */}
-          <div className="xl:col-span-4 p-6 rounded-3xl bg-white/50 backdrop-blur-md border border-slate-200/50 shadow-sm flex flex-col gap-4 shadow-sm">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 font-black">Réapprovisionner</h3>
-            <p className="text-xs text-slate-500 font-semibold">Incrémentez le stock existant de votre pharmacie lors de la réception de colis grossistes :</p>
+          <div className="xl:col-span-4 p-8 rounded-[32px] glass-premium-dark flex flex-col gap-6 sticky top-24">
+            <div>
+              <h3 className="text-xl font-light text-white tracking-tight">Réapprovisionner</h3>
+              <p className="text-xs text-white/50 font-medium mt-2">Incrémentez le stock existant suite à une livraison grossiste :</p>
+            </div>
             
-            <form onSubmit={handleReplenishStock} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Choisir le médicament</label>
+            <form onSubmit={handleReplenishStock} className="flex flex-col gap-5 mt-2">
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Choisir le produit</label>
                 <select
                   value={replenishMedId}
                   onChange={(e) => setReplenishMedId(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-teal-500 focus:outline-none text-xs bg-white font-bold"
+                  className="w-full px-5 py-4 rounded-xl bg-black/40 border border-white/10 focus:border-[#00f0ff] focus:outline-none text-sm font-bold text-white appearance-none cursor-none"
                 >
-                  <option value="">-- Sélectionner --</option>
+                  <option value="" className="bg-zinc-900">-- Sélectionner --</option>
                   {myStocks.map(s => (
-                    <option key={s.medicamentId} value={s.medicamentId}>{s.medicament.nom}</option>
+                    <option key={s.medicamentId} value={s.medicamentId} className="bg-zinc-900">{s.medicament.nom}</option>
                   ))}
                 </select>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Quantité à AJOUTER</label>
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Quantité Reçue (Boîtes)</label>
                 <input
                   type="number"
                   min={1}
                   required
                   value={replenishQty}
                   onChange={(e) => setReplenishReplenishQty(parseInt(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-teal-500 focus:outline-none text-xs bg-white font-extrabold"
+                  className="w-full px-5 py-4 rounded-xl bg-black/40 border border-white/10 focus:border-[#00f0ff] focus:outline-none text-lg font-light text-white cursor-none"
                 />
               </div>
 
               {replenishSuccess && (
-                <div className="p-3 rounded-lg bg-emerald-50 text-emerald-750 text-xs font-bold border border-emerald-100">
+                <div className="p-4 rounded-xl bg-green-500/10 text-green-400 text-xs font-black border border-green-500/20 text-center uppercase tracking-widest animate-pulse">
                   {replenishSuccess}
                 </div>
               )}
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-sky-500 text-white text-xs font-bold shadow-md shadow-teal-500/10 hover:shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-4 mt-2 rounded-xl bg-white hover:bg-[#00f0ff] text-black text-xs font-bold uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-2 cursor-none"
+                data-cursor-magnet
               >
-                <Package size={14} />
-                Valider l'entrée de stock
+                <Package size={16} />
+                Ajouter au stock
               </button>
             </form>
           </div>

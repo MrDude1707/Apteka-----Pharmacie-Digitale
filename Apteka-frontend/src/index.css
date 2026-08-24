@@ -135,6 +135,33 @@ body {
    PREMIUM SENIOR DESIGN SYSTEMS ADDITIONS
    ============================================== */
 
+/* Awwwards Double-Border Glassmorphism */
+.glass-awwwards-dark {
+  background: rgba(9, 9, 11, 0.4);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 
+    0 24px 40px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.glass-awwwards-light {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-left: 1px solid rgba(255, 255, 255, 0.5);
+  border-right: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    0 12px 32px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
 /* Premium Glassmorphism Panel */
 .glass-premium {
   background: rgba(255, 255, 255, 0.65);
@@ -148,13 +175,15 @@ body {
 }
 
 .glass-premium-dark {
-  background: rgba(29, 29, 31, 0.65);
-  backdrop-filter: blur(24px) saturate(190%);
-  -webkit-backdrop-filter: blur(24px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 
-    0 4px 30px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+}
+
+[data-cursor-magnet], [data-cursor-magnet] * {
+  cursor: none !important;
 }
 
 /* Subtle Shimmer effect on hover */
@@ -431,4 +460,26 @@ body {
   .border-apple-border\/30 {
     border-color: rgba(63, 63, 70, 0.4) !important;
   }
+}
+
+/* ==============================================
+   ANIMATED FILM GRAIN & LUSION DYNAMIC EFFECTS
+   ============================================== */
+@keyframes noise-animation {
+  0% { transform: translate(0, 0); }
+  10% { transform: translate(-1%, -2%); }
+  20% { transform: translate(-2%, 1%); }
+  30% { transform: translate(1%, -1%); }
+  40% { transform: translate(-1%, 1.5%); }
+  50% { transform: translate(-1.5%, 1%); }
+  60% { transform: translate(1%, 1.5%); }
+  70% { transform: translate(1.5%, -1%); }
+  80% { transform: translate(-1%, 0.5%); }
+  90% { transform: translate(1%, -1.5%); }
+  100% { transform: translate(0, 0); }
+}
+
+.animated-grain {
+  animation: noise-animation 0.15s infinite;
+  will-change: transform;
 }

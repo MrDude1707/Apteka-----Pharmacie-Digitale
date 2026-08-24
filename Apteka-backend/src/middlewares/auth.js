@@ -29,6 +29,11 @@ async function protect(req, res, next) {
         return res.status(401).json({ error: "Utilisateur non trouvé ou supprimé." });
       }
 
+      // SÉCURITÉ CRITIQUE : Empêcher l'accès si le profil est suspendu ou rejeté par l'admin en temps réel
+      if (user.profile && (user.profile.status === 'BLOCKED' || user.profile.status === 'REJECTED')) {
+        return res.status(403).json({ error: "Votre compte a été suspendu ou désactivé. Veuillez contacter l'assistance." });
+      }
+
       req.user = user;
       next();
     } catch (error) {

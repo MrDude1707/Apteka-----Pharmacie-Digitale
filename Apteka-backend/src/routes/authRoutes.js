@@ -2,17 +2,31 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { protect, isAdmin } = require('../middlewares/auth');
+const { createLimiter } = require('../middlewares/rateLimiter');
 
-router.post('/register', authController.register);
-router.post('/verify-otp', authController.verifyOtp);
-router.post('/resend-otp', authController.resendOtp);
-router.post('/login', authController.login);
+// Configuration des limiteurs de débit pour protéger les routes sensibles
+const authLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 requêtes par IP
+  message: "Trop d'échecs de connexion ou de requêtes sensibles. Veuillez patienter 15 minutes avant de réessayer."
+});
+
+const registrationAndOtpLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 requêtes par IP
+  message: "Trop de demandes d'inscription ou de validation de code OTP. Veuillez patienter 15 minutes avant de réessayer."
+});
+
+router.post('/register', registrationAndOtpLimiter, authController.register);
+router.post('/verify-otp', registrationAndOtpLimiter, authController.verifyOtp);
+router.post('/resend-otp', registrationAndOtpLimiter, authController.resendOtp);
+router.post('/login', authLimiter, authController.login);
 router.get('/me', protect, authController.getMe);
 router.put('/me', protect, authController.updateMe);
 router.post('/change-password', protect, authController.changePassword);
 
-router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password', authController.resetPassword);
+router.post('/forgot-password', authLimiter, authController.forgotPassword);
+router.post('/reset-password', authLimiter, authController.resetPassword);
 
 router.get('/admin/pending', protect, isAdmin, authController.getPendingProfessionals);
 router.post('/admin/approve/:profileId', protect, isAdmin, authController.approveProfessional);

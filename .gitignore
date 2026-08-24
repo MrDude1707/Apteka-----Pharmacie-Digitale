@@ -1,0 +1,42 @@
+# Apteka - Root GitIgnore
+
+# Ignorer les clés API et fichiers contenant des credentials sensibles
+Github-token.md
+Resend-API-Keys.md
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dépendances et builds spécifiques à chaque projet
+node_modules/
+Apteka-backend/node_modules/
+Apteka-frontend/node_modules/
+
+# Répertoires de build
+dist/
+Apteka-frontend/dist/
+.svelte-kit/
+.next/
+out/
+build/
+
+# Fichiers de log et de cache
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+.parcel-cache
+
+# Systèmes d'exploitation
+.DS_Store
+Thumbs.db
+
+# Base de données locale SQLite et locks de migration Prisma si nécessaire
+*.db
+*.db-journal
+/Apteka-backend/prisma/*.db
+/Apteka-backend/prisma/*.db-journal

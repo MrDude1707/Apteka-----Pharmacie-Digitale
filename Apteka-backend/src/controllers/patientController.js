@@ -227,7 +227,13 @@ async function verifyCheckoutSession(req, res) {
 
     if (isPaid) {
       // Déduire les stocks de la pharmacie concernée pour chaque produit
-      const items = typeof commande.items === 'string' ? JSON.parse(commande.items) : commande.items;
+      let items;
+      try {
+        items = typeof commande.items === 'string' ? JSON.parse(commande.items) : commande.items;
+      } catch (parseError) {
+        console.error("Erreur de parsing des articles de la commande:", parseError);
+        return res.status(500).json({ error: "Les données des articles associés à cette commande sont corrompues ou invalides." });
+      }
       const txOperations = [];
 
       for (const item of items) {

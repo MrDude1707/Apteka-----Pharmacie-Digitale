@@ -80,9 +80,15 @@ async function deliverOrdonnance(req, res) {
       return res.status(400).json({ error: "Cette ordonnance a déjà été entièrement délivrée." });
     }
 
-    const prescritMedicaments = typeof ordonnance.medicaments === 'string' 
-      ? JSON.parse(ordonnance.medicaments) 
-      : ordonnance.medicaments;
+    let prescritMedicaments;
+    try {
+      prescritMedicaments = typeof ordonnance.medicaments === 'string' 
+        ? JSON.parse(ordonnance.medicaments) 
+        : ordonnance.medicaments;
+    } catch (parseError) {
+      console.error("Erreur de formatage ou parsing des médicaments de l'ordonnance:", parseError);
+      return res.status(500).json({ error: "Les données des médicaments associées à cette ordonnance sont corrompues ou invalides." });
+    }
 
     // Étape 1 : Vérifier la disponibilité de TOUS les stocks dans la pharmacie du pharmacien
     const stocksToUpdate = [];

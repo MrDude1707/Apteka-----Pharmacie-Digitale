@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Lenis from 'lenis';
 import Navbar from './components/Navbar';
 import LandingPage from './components/LandingPage';
 import MapRoute from './components/MapRoute';
@@ -6,17 +7,47 @@ import DoctorDashboard from './components/DoctorDashboard';
 import PharmacistDashboard from './components/PharmacistDashboard';
 import PatientDashboard from './components/PatientDashboard';
 import DashboardLayout from './components/dashboard/DashboardLayout';
+import LusionInspiredPrototype from './components/landing/LusionInspiredPrototype';
+import TextReveal from './components/ui/TextReveal';
+import WebGLBackground from './components/ui/WebGLBackground';
 import { Search, CheckCircle, ClipboardList, ShoppingCart, MessageCircle, FileText, Send, X, CreditCard, HeartPulse, Printer, Pill, Users, Check, LayoutGrid, RefreshCw } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { API_URL } from './config';
 
 export default function App() {
+  // ROUTE DE DEMONSTRATION LUSION
+  if (window.location.pathname === '/lusion-demo') {
+    return <LusionInspiredPrototype />;
+  }
+
   const [user, setUser] = useState<any>(null);
   const [welcomeUser, setWelcomeUser] = useState<any>(null);
   const [showWelcomeAnimation, setShowWelcomeAnimation] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState('home');
   const [loading, setLoading] = useState(true);
   const [patientLocation, setPatientLocation] = useState({ lat: -18.913, lng: 47.525 });
+
+  // Awwwards-level Smooth Scroll Physics via Lenis
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Apple-like smooth decel
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      wheelMultiplier: 1,
+      touchMultiplier: 2,
+      infinite: false,
+    });
+
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    return () => lenis.destroy();
+  }, []);
 
   // RECHERCHE & AUTOCOMPLETE (Tâche 9)
   const [searchQuery, setSearchQuery] = useState('');
@@ -247,27 +278,52 @@ export default function App() {
     if(activeTab === 'pharmacies_map') fetch(`${API_URL}/api/public/pharmacies`).then(r=>r.json()).then(setAllPharmacies);
   }, [activeTab]);
 
-  if (loading) return <div className="flex h-screen items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-4 border-emerald-500"></div></div>;
+  if (loading) return <div className="flex h-screen items-center justify-center bg-[#050505]"><div className="w-1.5 h-1.5 bg-[#00f0ff] rounded-full animate-ping"></div></div>;
   if (!user) {
     if (showWelcomeAnimation && welcomeUser) {
       return (
-        <div className="fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center animate-fade-in" style={{ fontFamily: 'Georgia, "Playfair Display", "Times New Roman", serif' }}>
-          <div className="text-center max-w-2xl px-6 flex flex-col gap-6 select-none">
-            <p className="text-gray-400 font-serif italic text-sm tracking-[0.2em] uppercase mb-4">Apteka</p>
-            <h1 className="text-4xl md:text-5xl font-light text-black leading-snug tracking-tight animate-slide-up">
-              Bonjour, <span className="font-semibold">{welcomeUser.firstName} {welcomeUser.lastName}</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-800 italic font-light tracking-wide mt-2 animate-slide-up delay-150">
-              {welcomeUser.role === 'PATIENT' 
-                ? "que la santé soit avec vous."
-                : welcomeUser.role === 'MEDECIN'
-                ? "merci pour votre dévouement aujourd'hui."
-                : welcomeUser.role === 'PHARMACIEN'
-                ? "votre dévouement est au cœur de notre service."
-                : "ravi de vous revoir sur votre espace sécurisé."}
-            </p>
-            <div className="mt-12 flex justify-center">
-              <div className="w-2 h-2 bg-black rounded-full animate-ping"></div>
+        <div className="fixed inset-0 bg-[#050505] z-[9999] flex flex-col items-center justify-center cursor-none overflow-hidden font-sans">
+          
+          {/* Ciné noise */}
+          <div className="absolute inset-0 w-full h-full pointer-events-none z-[1] opacity-[0.12]" 
+               style={{ background: 'url(\'data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E\')' }} />
+          
+          {/* Lusion Fluid Background (with opacity lowered for text readability) */}
+          <div className="absolute inset-0 z-0 opacity-30">
+            <WebGLBackground />
+          </div>
+
+          <div className="relative z-10 text-center max-w-4xl px-6 flex flex-col gap-6 select-none items-center justify-center">
+            
+            <div className="flex justify-center mb-6">
+              <span className="text-[10px] font-black tracking-[0.3em] uppercase text-[#00f0ff] animate-pulse">
+                Accès Sécurisé
+              </span>
+            </div>
+
+            <div className="text-4xl md:text-6xl font-light text-white leading-tight tracking-tight flex flex-wrap justify-center gap-x-4">
+              <TextReveal text="Bonjour," delay={0.2} duration={1.2} />
+              <TextReveal text={`${welcomeUser.firstName} ${welcomeUser.lastName}.`} delay={0.6} duration={1.2} className="font-bold text-white" />
+            </div>
+            
+            <div className="text-xl md:text-2xl text-white/50 font-light tracking-wide mt-2 flex justify-center">
+              <TextReveal 
+                text={
+                  welcomeUser.role === 'PATIENT' 
+                    ? "Que la santé soit avec vous."
+                    : welcomeUser.role === 'MEDECIN'
+                    ? "Merci pour votre dévouement aujourd'hui."
+                    : welcomeUser.role === 'PHARMACIEN'
+                    ? "Votre dévouement est au cœur de notre service."
+                    : "Ravi de vous revoir sur votre espace."
+                } 
+                delay={1.2} 
+                duration={1.2} 
+              />
+            </div>
+            
+            <div className="mt-16 flex justify-center opacity-0 animate-in fade-in zoom-in duration-1000 delay-[1800ms] fill-mode-forwards">
+              <div className="w-2 h-2 bg-[#00f0ff] rounded-full animate-ping"></div>
             </div>
           </div>
         </div>
@@ -284,7 +340,7 @@ export default function App() {
             setActiveTab(u.role === 'MEDECIN' ? 'medecin_stocks' : u.role === 'PATIENT' ? 'recherche' : u.role === 'ADMINISTRATEUR' ? 'admin_vitrine' : 'pharmacien_deliver');
             setShowWelcomeAnimation(false);
             setWelcomeUser(null);
-          }, 3500);
+          }, 3800); // Expanded slightly to enjoy the GSAP effect
         }} 
         handleQuickDemoLogin={(e) => {}} 
       />

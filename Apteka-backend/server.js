@@ -4,6 +4,14 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+// Contrôle de sécurité critique sur la clé secrète JWT
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.error("❌ ERREUR SÉCURITÉ CRITIQUE : La variable d'environnement JWT_SECRET est obligatoire en production !");
+  process.exit(1);
+} else if (!process.env.JWT_SECRET) {
+  console.warn("⚠️ ALERTE DE SÉCURITÉ : La variable JWT_SECRET n'est pas définie. Clé de secours par défaut utilisée.");
+}
+
 const authRoutes = require('./src/routes/authRoutes');
 const medecinRoutes = require('./src/routes/medecinRoutes');
 const pharmacienRoutes = require('./src/routes/pharmacienRoutes');
@@ -40,7 +48,50 @@ app.get('/api/public/pharmacies', async (req, res) => {
 
 app.get('/api/public/medicaments', async (req, res) => {
   try {
-    const medicaments = await prisma.medicament.findMany({ orderBy: { nom: 'asc' } });
+    const { page, limit, search } = req.query;
+    
+    let whereClause = {};
+    if (search && search.trim() !== '') {
+      whereClause = {
+        OR: [
+          { nom: { contains: search, mode: 'insensitive' } },
+          { substanceActive: { contains: search, mode: 'insensitive' } }
+        ]
+      };
+    }
+
+    if (page && limit) {
+      const pageNum = parseInt(page, 10) || 1;
+      const limitNum = parseInt(limit, 10) || 20;
+      const skip = (pageNum - 1) * limitNum;
+
+      const [medicaments, total] = await Promise.all([
+        prisma.medicament.findMany({
+          where: whereClause,
+          orderBy: { nom: 'asc' },
+          skip: skip,
+          take: limitNum
+        }),
+        prisma.medicament.count({ where: whereClause })
+      ]);
+
+      return res.status(200).json({
+        data: medicaments,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: total,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      });
+    }
+
+    // Default return with a safety limit of 100 items to avoid overloading
+    const medicaments = await prisma.medicament.findMany({
+      where: whereClause,
+      orderBy: { nom: 'asc' },
+      take: 100
+    });
     return res.status(200).json(medicaments);
   } catch (error) {
     console.error("Erreur de récupération des médicaments publics:", error);

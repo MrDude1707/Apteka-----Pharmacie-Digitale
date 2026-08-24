@@ -95,6 +95,16 @@ const fallbackClient = {
   profile: {
     findUnique: async ({ where }) => mockProfiles.find(p => p.userId === where.userId),
     findMany: async ({ where }) => mockProfiles.filter(p => (!where?.role || p.role === where.role) && (!where?.status || p.status === where.status) && (!where?.medecinChoisiId || p.medecinChoisiId === where.medecinChoisiId)),
+    count: async ({ where } = {}) => {
+      if (!where) return mockProfiles.length;
+      let res = mockProfiles;
+      if (where.role) {
+        if (where.role.in) res = res.filter(p => where.role.in.includes(p.role));
+        else res = res.filter(p => p.role === where.role);
+      }
+      if (where.status) res = res.filter(p => p.status === where.status);
+      return res.length;
+    },
     update: async ({ where, data }) => {
       const idx = mockProfiles.findIndex(p => p.id === where.id || p.userId === where.userId);
       if (idx !== -1) mockProfiles[idx] = { ...mockProfiles[idx], ...data };
@@ -112,14 +122,37 @@ const fallbackClient = {
   },
   pharmacie: {
     findMany: async () => mockPharmacies,
-    findUnique: async ({ where }) => mockPharmacies.find(p => p.id === where.id)
+    findUnique: async ({ where }) => mockPharmacies.find(p => p.id === where.id),
+    count: async () => mockPharmacies.length
   },
   medicament: {
-    findMany: async ({ where, take }) => {
+    findMany: async ({ where, take, skip }) => {
       let res = mockMedicaments;
-      if (where?.nom?.contains) res = res.filter(m => m.nom.toLowerCase().includes(where.nom.contains.toLowerCase()));
+      if (where?.OR) {
+        const searchVal = where.OR[0].nom.contains.toLowerCase();
+        res = res.filter(m => 
+          m.nom.toLowerCase().includes(searchVal) || 
+          m.substanceActive.toLowerCase().includes(searchVal)
+        );
+      } else if (where?.nom?.contains) {
+        res = res.filter(m => m.nom.toLowerCase().includes(where.nom.contains.toLowerCase()));
+      }
+      if (skip) res = res.slice(skip);
       if (take) res = res.slice(0, take);
       return res;
+    },
+    count: async ({ where } = {}) => {
+      let res = mockMedicaments;
+      if (where?.OR) {
+        const searchVal = where.OR[0].nom.contains.toLowerCase();
+        res = res.filter(m => 
+          m.nom.toLowerCase().includes(searchVal) || 
+          m.substanceActive.toLowerCase().includes(searchVal)
+        );
+      } else if (where?.nom?.contains) {
+        res = res.filter(m => m.nom.toLowerCase().includes(where.nom.contains.toLowerCase()));
+      }
+      return res.length;
     },
     findUnique: async ({ where }) => mockMedicaments.find(m => m.id === where.id || m.cis === where.cis)
   },
@@ -149,6 +182,12 @@ const fallbackClient = {
       return {...ord, medecin: mockUsers.find(u=>u.id===ord.medecinId), patient: mockUsers.find(u=>u.id===ord.patientId)};
     },
     findMany: async ({ where }) => mockOrdonnances.filter(o => (!where?.patientId || o.patientId === where.patientId) && (!where?.medecinId || o.medecinId === where.medecinId) && (!where?.status || o.status === where.status)),
+    count: async ({ where } = {}) => {
+      if (!where) return mockOrdonnances.length;
+      let res = mockOrdonnances;
+      if (where.status) res = res.filter(o => o.status === where.status);
+      return res.length;
+    },
     update: async ({ where, data }) => {
       const idx = mockOrdonnances.findIndex(o => o.id === where.id);
       if (idx !== -1) mockOrdonnances[idx] = { ...mockOrdonnances[idx], ...data };
