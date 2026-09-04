@@ -483,3 +483,21 @@ body {
   animation: noise-animation 0.15s infinite;
   will-change: transform;
 }
+
+/* ==============================================
+   NATIVE NO-CURSOR OVERRIDE (HIGH-PERFORMANCE)
+   ============================================== */
+@media (pointer: fine) {
+  html, 
+  body, 
+  button, 
+  a, 
+  input, 
+  select, 
+  textarea, 
+  [role="button"],
+  .cursor-none,
+  .cursor-none * {
+    cursor: none !important;
+  }
+}
