@@ -16,7 +16,7 @@ import WebGLBackground from './ui/WebGLBackground';
 import TextReveal from './ui/TextReveal';
 import MagneticButton from './ui/MagneticButton';
 
-export default function LandingPage({ onLoginSuccess, handleQuickDemoLogin }) {
+export default function LandingPage({ onLoginSuccess }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
 
@@ -51,7 +51,6 @@ export default function LandingPage({ onLoginSuccess, handleQuickDemoLogin }) {
         isOpen={isLoginOpen} 
         onClose={() => setIsLoginOpen(false)} 
         onLoginSuccess={onLoginSuccess}
-        handleQuickDemoLogin={handleQuickDemoLogin}
       />
 
       {/* Premium Floating Glassmorphic Navbar */}
@@ -88,7 +87,6 @@ export default function LandingPage({ onLoginSuccess, handleQuickDemoLogin }) {
         <HeroSection 
           onConnectClick={() => setIsLoginOpen(true)} 
           onHowItWorksClick={() => scrollToSection('features')}
-          handleQuickDemoLogin={handleQuickDemoLogin}
         />
         
         <PartnersMarquee />

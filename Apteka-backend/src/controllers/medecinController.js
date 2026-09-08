@@ -215,7 +215,13 @@ async function getRenewals(req, res) {
 async function approveRenewal(req, res) {
   const { id } = req.params;
   try {
-    const oldOrd = await prisma.ordonnance.findUnique({ where: { id } });
+    const oldOrd = await prisma.ordonnance.findFirst({
+      where: {
+        id,
+        medecinId: req.user.id,
+        status: 'RENEWAL_REQUESTED'
+      }
+    });
     if (!oldOrd) return res.status(404).json({ error: "Ordonnance introuvable." });
     
     // Marquer l'ancienne comme délivrée/archivée

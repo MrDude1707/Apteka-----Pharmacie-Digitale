@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ClipboardList, CheckCircle2, AlertTriangle, Package, RefreshCw, Layers, ShieldCheck, MapPin, Pill } from 'lucide-react';
 import { API_URL } from '../config';
+import { notify } from '../utils/notify';
 import DashboardLayout from './dashboard/DashboardLayout';
 
 export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
@@ -83,10 +84,10 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(data.message || "Statut de commande mis à jour !");
+        notify(data.message || "Statut de commande mis à jour !", 'success');
         fetchPharmacyCommandes();
       } else {
-        alert(data.error || "Erreur de mise à jour du statut.");
+        notify(data.error || "Erreur de mise à jour du statut.", 'error');
       }
     } catch (err) {
       console.error(err);
@@ -222,7 +223,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
     setReplenishSuccess('');
     
     if (!replenishMedId) {
-      alert("Veuillez sélectionner un médicament.");
+      notify("Veuillez sélectionner un médicament.", 'error');
       return;
     }
 
@@ -242,13 +243,13 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.error);
+        notify(data.error, 'error');
       } else {
         setReplenishSuccess("Le réapprovisionnement de l'inventaire a été validé !");
         fetchMyStocks(); // Recharger
       }
     } catch (err) {
-      alert("Erreur de connexion.");
+      notify("Erreur de connexion.", 'error');
     }
   };
 

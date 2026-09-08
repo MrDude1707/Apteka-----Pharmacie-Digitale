@@ -5,6 +5,7 @@ import TextReveal from './components/ui/TextReveal';
 import WebGLBackground from './components/ui/WebGLBackground';
 import { ClipboardList, Users, LayoutGrid, RefreshCw } from 'lucide-react';
 import { API_URL } from './config';
+import { notify } from './utils/notify';
 
 const DoctorDashboard = lazy(() => import('./components/DoctorDashboard'));
 const PharmacistDashboard = lazy(() => import('./components/PharmacistDashboard'));
@@ -21,8 +22,6 @@ export default function App() {
   const [showWelcomeAnimation, setShowWelcomeAnimation] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState('home');
   const [loading, setLoading] = useState(true);
-  const [patientLocation, setPatientLocation] = useState({ lat: -18.913, lng: 47.525 });
-
   // Awwwards-level Smooth Scroll Physics via Lenis
   useEffect(() => {
     const lenis = new Lenis({
@@ -45,49 +44,9 @@ export default function App() {
     return () => lenis.destroy();
   }, []);
 
-  // RECHERCHE & AUTOCOMPLETE (Tâche 9)
-  const [searchQuery, setSearchQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [searchStocks, setSearchStocks] = useState<any[]>([]);
-
-  // CART & CHECKOUT (Tâche 5)
-  const [cart, setCart] = useState<any[]>([]);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
-
-  const updateCartQty = (index: number, newQty: number) => {
-    const newCart = [...cart];
-    if (newQty < 1) return;
-    if (newQty > newCart[index].quantite) {
-      alert(`Désolé, seulement ${newCart[index].quantite} boîte(s) sont disponibles en stock.`);
-      return;
-    }
-    newCart[index] = { ...newCart[index], qty: newQty };
-    setCart(newCart);
-  };
-
-  const removeFromCart = (index: number) => {
-    const newCart = cart.filter((_, i) => i !== index);
-    setCart(newCart);
-    if (newCart.length === 0) {
-      setShowCheckout(false);
-    }
-  };
-
-  // MESSAGERIE (Tâche 3)
-  const [chatMessages, setChatMessages] = useState<any[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [chatDoctorId, setChatDoctorId] = useState('');
-
-  // PRESCRIPTIONS & RENOUVELLEMENT (Tâche 2 & 4)
-  const [myPrescriptions, setMyPrescriptions] = useState<any[]>([]);
-  const [viewPdfOrdonnance, setViewPdfOrdonnance] = useState<any>(null);
-
   // ADMIN VITRINE (Tâche 1)
   const [adminVitrines, setAdminVitrines] = useState<any[]>([]);
   const [adminMedecins, setAdminMedecins] = useState<any[]>([]);
-  const [allPharmacies, setAllPharmacies] = useState<any[]>([]);
-  const [selectedZone, setSelectedZone] = useState('');
 
   // ADMIN COMPTES & SUPERVISION
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
@@ -114,72 +73,6 @@ export default function App() {
     }
   }, []);
 
-  const handleAutocomplete = async (val: string) => {
-    setSearchQuery(val);
-    if(val.length < 2) return setSuggestions([]);
-    const res = await fetch(`${API_URL}/api/patient/medicaments/autocomplete?q=${val}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }});
-    setSuggestions(await res.json());
-  };
-
-  const handleSearchMeds = async (query = searchQuery) => {
-    setSuggestions([]);
-    setSearchQuery(query);
-    const res = await fetch(`${API_URL}/api/patient/medicaments/recherche?query=${encodeURIComponent(query)}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }});
-    const data = await res.json();
-    setSearchStocks(data.stocks || []);
-  };
-
-  const loadPrescriptions = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/patient/ordonnances/my-history`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }});
-      const data = await res.json();
-      if (!Array.isArray(data)) {
-        console.warn("loadPrescriptions output is not an array:", data);
-        setMyPrescriptions([]);
-        return;
-      }
-      const parsedData = data.map((p: any) => ({
-        ...p,
-        medicaments: typeof p.medicaments === 'string' ? JSON.parse(p.medicaments) : p.medicaments
-      }));
-      setMyPrescriptions(parsedData);
-    } catch (err) {
-      console.error("Error loading prescriptions:", err);
-      setMyPrescriptions([]);
-    }
-  };
-
-  const requestRenewal = async (id: string) => {
-    await fetch(`${API_URL}/api/patient/ordonnances/${id}/renew`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }});
-    alert("Demande de renouvellement envoyée au médecin traitant !");
-    loadPrescriptions();
-  };
-
-  const loadChat = async () => {
-    const res = await fetch(`${API_URL}/api/patient/messages`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }});
-    const data = await res.json();
-    setChatMessages(data.messages || []);
-    setChatDoctorId(data.doctorId);
-  };
-
-  const sendMessage = async () => {
-    if(!newMessage.trim()) return;
-    await fetch(`${API_URL}/api/patient/messages`, { method: 'POST', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ receiverId: chatDoctorId, content: newMessage }) });
-    setNewMessage('');
-    loadChat();
-  };
-
-  const processFakeCheckout = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if(cart.length===0) return;
-    const pharmacieId = cart[0].pharmacieId; 
-    const total = cart.reduce((acc, c) => acc + (c.medicament.prix||0)*(c.qty||1), 0);
-    await fetch(`${API_URL}/api/patient/commandes`, { method: 'POST', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ pharmacieId, items: cart.map(c=>({...c, qty: c.qty||1})), total }) });
-    setCart([]);
-    setCheckoutSuccess(true);
-    setTimeout(() => { setShowCheckout(false); setCheckoutSuccess(false); }, 3000);
-  };
-
   const loadVitrineData = async () => {
     const res = await fetch(`${API_URL}/api/auth/admin/vitrine`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }});
     const data = await res.json();
@@ -188,7 +81,7 @@ export default function App() {
 
   const linkVitrine = async (vitrineId: string, userId: string) => {
     await fetch(`${API_URL}/api/auth/admin/vitrine/${vitrineId}/link`, { method: 'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ userId }) });
-    alert("Médecin lié à la vitrine !"); loadVitrineData();
+    notify("Médecin lié à la vitrine !", 'success'); loadVitrineData();
   };
 
   const loadPendingUsers = async () => {
@@ -234,10 +127,10 @@ export default function App() {
     const res = await fetch(`${API_URL}/api/auth/admin/approve/${profileId}`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }});
     const data = await res.json();
     if (res.ok) {
-      alert(data.message);
+      notify(data.message, 'success');
       loadPendingUsers();
     } else {
-      alert(data.error || "Une erreur est survenue.");
+      notify(data.error || "Une erreur est survenue.", 'error');
     }
   };
 
@@ -246,10 +139,10 @@ export default function App() {
     const res = await fetch(`${API_URL}/api/auth/admin/reject/${profileId}`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }});
     const data = await res.json();
     if (res.ok) {
-      alert(data.message);
+      notify(data.message, 'success');
       loadPendingUsers();
     } else {
-      alert(data.error || "Une erreur est survenue.");
+      notify(data.error || "Une erreur est survenue.", 'error');
     }
   };
 
@@ -257,21 +150,18 @@ export default function App() {
     const res = await fetch(`${API_URL}/api/auth/admin/toggle-block/${profileId}`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }});
     const data = await res.json();
     if (res.ok) {
-      alert(data.message);
+      notify(data.message, 'success');
       loadAllUsers();
     } else {
-      alert(data.error || "Une erreur est survenue.");
+      notify(data.error || "Une erreur est survenue.", 'error');
     }
   };
 
   useEffect(() => {
-    if(activeTab === 'prescriptions') loadPrescriptions();
-    if(activeTab === 'messagerie') loadChat();
     if(activeTab === 'admin_vitrine') loadVitrineData();
     if(activeTab === 'admin_users') loadPendingUsers();
     if(activeTab === 'admin_all_users') loadAllUsers();
     if(activeTab === 'admin_supervision') loadAdminStats();
-    if(activeTab === 'pharmacies_map') fetch(`${API_URL}/api/public/pharmacies`).then(r=>r.json()).then(setAllPharmacies);
   }, [activeTab]);
 
   if (loading) return <div className="flex h-screen items-center justify-center bg-[#050505]"><div className="w-1.5 h-1.5 bg-[#00f0ff] rounded-full animate-ping"></div></div>;
@@ -279,10 +169,6 @@ export default function App() {
     if (showWelcomeAnimation && welcomeUser) {
       return (
         <div className="fixed inset-0 bg-[#050505] z-[9999] flex flex-col items-center justify-center cursor-none overflow-hidden font-sans">
-          
-          {/* Ciné noise */}
-          <div className="absolute inset-0 w-full h-full pointer-events-none z-[1] opacity-[0.12]" 
-               style={{ background: 'url(\'data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E\')' }} />
           
           {/* Lusion Fluid Background (with opacity lowered for text readability) */}
           <div className="absolute inset-0 z-0 opacity-30">
@@ -338,7 +224,6 @@ export default function App() {
             setWelcomeUser(null);
           }, 3800); // Expanded slightly to enjoy the GSAP effect
         }} 
-        handleQuickDemoLogin={(e) => {}} 
       />
     );
   }

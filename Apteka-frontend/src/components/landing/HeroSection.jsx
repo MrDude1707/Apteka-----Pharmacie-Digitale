@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 // =======================================================================
 // SECTION HERO PRINCIPALE — OPTIMISÉE SANS 3D (LUSIVE DECONSTRUCTED)
 // =======================================================================
-export default function HeroSection({ onConnectClick, onHowItWorksClick, handleQuickDemoLogin }) {
+export default function HeroSection({ onConnectClick, onHowItWorksClick }) {
   return (
     <section 
       className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#050505]"
@@ -93,12 +93,6 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick, handleQ
               </span>
             </button>
 
-            <button
-              onClick={handleQuickDemoLogin}
-              className="px-6 py-4 text-xs font-bold text-zinc-400 hover:text-white tracking-widest uppercase transition-colors cursor-none"
-            >
-              Voir une démo
-            </button>
           </motion.div>
         </div>
 

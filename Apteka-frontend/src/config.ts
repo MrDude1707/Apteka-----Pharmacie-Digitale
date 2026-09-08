@@ -1,3 +1,5 @@
+import { notify } from './utils/notify';
+
 // URL de base de l'API backend.
 // En développement, définie dans .env (VITE_API_URL=http://localhost:3001)
 // En production, à définir dans les variables d'environnement de l'hébergeur du frontend.
@@ -20,7 +22,7 @@ window.fetch = async function (...args) {
         data.error.toLowerCase().includes('bloqué') ||
         data.error.toLowerCase().includes('supprimé')
       )) {
-        alert(`⚠️ Sécurité Apteka : ${data.error}`);
+        notify(`Sécurité Apteka : ${data.error}`, 'error');
         localStorage.removeItem('token');
         // Recharger pour réinitialiser l'état React et rediriger vers la page d'accueil
         window.location.href = window.location.origin;

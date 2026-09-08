@@ -6,6 +6,7 @@ const { protect } = require('../middlewares/auth');
 router.use(protect);
 
 router.get('/medicaments/recherche', patientController.searchMedicamentAndStocks);
+router.get('/medicaments/catalogue', patientController.getCatalogue);
 router.get('/medicaments/autocomplete', patientController.getAutocomplete);
 router.get('/ordonnances/my-history', patientController.getMyPrescriptions);
 router.post('/ordonnances/:id/renew', patientController.requestRenewal);

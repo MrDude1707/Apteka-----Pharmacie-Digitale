@@ -3,6 +3,7 @@ import { Search, ClipboardList, ShoppingCart, MessageCircle, FileText, Send, X, 
 import QRCode from 'react-qr-code';
 import confetti from 'canvas-confetti';
 import { API_URL } from '../config';
+import { notify } from '../utils/notify';
 import MapRoute from './MapRoute';
 import DashboardLayout from './dashboard/DashboardLayout';
 
@@ -39,6 +40,8 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
   const [allPharmacies, setAllPharmacies] = useState([]);
   const [selectedZone, setSelectedZone] = useState('');
   const [patientLocation, setPatientLocation] = useState({ lat: -18.913, lng: 47.525 });
+  const [selectedPharmacyId, setSelectedPharmacyId] = useState(null);
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
   // Autocomplete fetch
   const handleAutocomplete = async (val) => {
@@ -70,6 +73,22 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
     }
   };
 
+  const loadCatalogue = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/patient/medicaments/catalogue`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Catalogue indisponible.');
+      setSearchQuery('');
+      setSuggestions([]);
+      setSearchMedicaments(data.medicaments || []);
+      setSearchStocks(data.stocks || []);
+    } catch (err) {
+      notify(err.message, 'error');
+    }
+  };
+
   // Load prescriptions history
   const loadPrescriptions = async () => {
     try {
@@ -83,6 +102,12 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
           medicaments: typeof p.medicaments === 'string' ? JSON.parse(p.medicaments) : p.medicaments
         }));
         setMyPrescriptions(parsedData);
+        const latestPending = parsedData.find(p => p.status === 'PENDING' && !p.renouvellementDemande);
+        const lastNotified = localStorage.getItem('apteka:last-prescription-notification');
+        if (latestPending && latestPending.id !== lastNotified) {
+          localStorage.setItem('apteka:last-prescription-notification', latestPending.id);
+          window.dispatchEvent(new CustomEvent('apteka:prescription-notification', { detail: latestPending }));
+        }
       }
     } catch (err) {
       console.error(err);
@@ -96,7 +121,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      alert("Demande de renouvellement envoyée au médecin traitant !");
+      notify("Demande de renouvellement envoyée au médecin traitant !", 'success');
       loadPrescriptions();
     } catch (err) {
       console.error(err);
@@ -137,7 +162,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
   };
 
   // Standard offline pharmacy reservation (Paiement sur place)
-  const processFakeCheckout = async (e) => {
+  const processReservation = async (e) => {
     e.preventDefault();
     if (cart.length === 0) return;
     try {
@@ -166,11 +191,11 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
         }, 3000);
       } else {
         const data = await res.json();
-        alert(data.error || "Une erreur est survenue lors de la réservation.");
+        notify(data.error || "Une erreur est survenue lors de la réservation.", 'error');
       }
     } catch (err) {
       console.error(err);
-      alert("Erreur réseau lors de la réservation.");
+      notify("Erreur réseau lors de la réservation.", 'error');
     }
   };
 
@@ -197,7 +222,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Erreur de création de session.");
+        notify(data.error || "Erreur de création de session.", 'error');
         return;
       }
       
@@ -207,7 +232,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
       }
     } catch (err) {
       console.error(err);
-      alert("Erreur réseau lors de la redirection Stripe.");
+      notify("Erreur réseau lors de la redirection Stripe.", 'error');
     }
   };
 
@@ -244,7 +269,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
           setActiveTab('patient_deliveries');
         }, 4000);
       } else {
-        alert(data.error || "Échec de la validation de paiement.");
+        notify(data.error || "Échec de la validation de paiement.", 'error');
       }
     } catch (err) {
       console.error(err.message);
@@ -275,7 +300,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
     const newCart = [...cart];
     if (newQty < 1) return;
     if (newQty > newCart[index].quantite) {
-      alert(`Désolé, seulement ${newCart[index].quantite} boîte(s) sont disponibles en stock.`);
+      notify(`Désolé, seulement ${newCart[index].quantite} boîte(s) sont disponibles en stock.`, 'error');
       return;
     }
     newCart[index] = { ...newCart[index], qty: newQty };
@@ -290,6 +315,21 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
     }
   };
 
+  const addToCart = (item) => {
+    if (cart.some(c => c.medicamentId === item.medicamentId)) {
+      notify("Ce médicament est déjà dans votre panier.", 'error');
+      return false;
+    }
+
+    if (cart.length > 0 && cart[0].pharmacieId !== item.pharmacieId) {
+      notify("Votre panier ne peut contenir que des produits de la même pharmacie. Videz-le avant de changer d'officine.", 'error');
+      return false;
+    }
+
+    setCart([...cart, { ...item, qty: 1 }]);
+    return true;
+  };
+
   // Stripe redirection hook
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -300,15 +340,28 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
     if (payment === 'success' && commandeId && sessionId) {
       verifyStripePayment(commandeId, sessionId);
     } else if (payment === 'cancel') {
-      alert("⚠️ Votre paiement Stripe a été annulé.");
+      notify("Votre paiement Stripe a été annulé.", 'info');
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
   // Hook tab loading triggers
   useEffect(() => {
+    loadPrescriptions();
+    const timer = setInterval(loadPrescriptions, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     if (activeTab === 'prescriptions') loadPrescriptions();
-    if (activeTab === 'patient_deliveries') loadCommandesHistory();
+    if (activeTab === 'patient_deliveries') {
+      loadCommandesHistory();
+      const timer = setInterval(() => {
+        setCurrentTime(Date.now());
+        loadCommandesHistory();
+      }, 30000);
+      return () => clearInterval(timer);
+    }
     if (activeTab === 'messagerie') {
       loadChat();
       const interval = setInterval(loadChat, 4000);
@@ -350,7 +403,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
             <span className="text-[10px] font-black text-[#00f0ff] tracking-widest uppercase mb-1 block">Achat Patient</span>
             <h3 className="text-3xl font-light text-white tracking-tight">Trouver un Médicament</h3>
             
-            <div className="relative mt-6">
+            <div className="relative mt-6 flex flex-col gap-3 sm:flex-row">
               <Search className="absolute left-5 top-4 text-white/40" size={20} />
               <input
                 type="text"
@@ -360,6 +413,9 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                 placeholder="Taper le nom d'un médicament (ex: Paracétamol, Doliprane...)"
                 className="w-full pl-14 pr-4 py-4 rounded-xl bg-black/40 border border-white/10 focus:border-[#00f0ff] focus:outline-none transition-all font-medium text-white placeholder-white/40 cursor-none"
               />
+              <button type="button" onClick={() => handleSearchMeds()} className="shrink-0 rounded-xl bg-[#00f0ff] px-6 py-4 text-xs font-black uppercase tracking-widest text-black hover:bg-white" data-cursor-magnet>
+                Rechercher
+              </button>
               
               {suggestions.length > 0 && (
                 <div className="absolute top-16 left-0 w-full glass-premium-dark border border-white/10 shadow-2xl rounded-2xl z-50 overflow-hidden animate-in fade-in duration-200">
@@ -379,7 +435,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
             </div>
           </div>
 
-          {searchStocks.length === 0 ? (
+          {searchStocks.length === 0 && searchMedicaments.length === 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* CATEGORIES CARD */}
               <div className="glass-premium-dark p-8 rounded-[24px]">
@@ -436,6 +492,13 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                   ))}
                 </div>
               </div>
+
+              <div className="glass-premium-dark p-8 rounded-[24px] lg:col-span-2">
+                <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                  <div><h4 className="text-xl font-light text-white">Explorer par catalogue</h4><p className="mt-2 text-xs text-white/50">Consultez tous les médicaments référencés dans la base Apteka.</p></div>
+                  <button type="button" onClick={loadCatalogue} className="rounded-xl bg-white px-5 py-3 text-xs font-black uppercase tracking-widest text-black hover:bg-[#00f0ff]" data-cursor-magnet>Afficher le catalogue</button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch">
@@ -477,27 +540,11 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                             <span className="text-lg font-light text-white">{(med.prix || 0).toFixed(2)} €</span>
                             <button
                               onClick={() => {
-                                if (cart.some(c => c.medicamentId === med.id)) {
-                                  alert("Ce médicament est déjà dans votre panier.");
-                                  return;
-                                }
-                                
                                 const stockForMed = searchStocks.find(s => s.medicamentId === med.id);
                                 if (stockForMed) {
-                                  setCart([...cart, { ...stockForMed, qty: 1 }]);
-                                  alert("Ajouté au panier ! Stock réservé à la pharmacie.");
+                                  if (addToCart(stockForMed)) notify("Ajouté au panier ! Stock réservé à la pharmacie.", 'success');
                                 } else {
-                                  const dummyStock = {
-                                    id: `sur-commande-${med.id}`,
-                                    medicamentId: med.id,
-                                    pharmacieId: '4', // Pharmacie de Tana (Nirina Rabe)
-                                    quantite: 100, // stock disponible virtuel
-                                    medicament: med,
-                                    pharmacie: { id: '4', name: "Pharmacie de Tana", zone: "Analakely" },
-                                    isSurCommande: true
-                                  };
-                                  setCart([...cart, { ...dummyStock, qty: 1 }]);
-                                  alert("Ajouté au panier ! Ce médicament en rupture réseau sera préparé sur commande spéciale.");
+                                  notify("Ce médicament est référencé mais indisponible dans les stocks actuels.", 'info');
                                 }
                               }}
                               className="px-5 py-2.5 bg-white hover:bg-[#00f0ff] text-black rounded-xl text-xs font-bold uppercase transition-colors cursor-none"
@@ -530,12 +577,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                         <b className="text-[#00f0ff] text-xl font-light">{(stock.medicament.prix || 0).toFixed(2)} €</b>
                         <button
                           onClick={() => {
-                            if (cart.some(c => c.id === stock.id)) {
-                              alert("Ce produit de cette pharmacie est déjà dans votre panier.");
-                              return;
-                            }
-                            setCart([...cart, { ...stock, qty: 1 }]);
-                            alert("Produit ajouté au panier !");
+                            if (addToCart(stock)) notify("Produit ajouté au panier !", 'success');
                           }}
                           className="bg-white/10 hover:bg-[#00f0ff] hover:text-black text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors cursor-none"
                           data-cursor-magnet
@@ -564,7 +606,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
 
       {/* 2. TOUTES LES PHARMACIES MAP */}
       {activeTab === 'pharmacies_map' && (
-        <div className="h-[650px] flex flex-col gap-6 animate-in fade-in duration-300">
+        <div className="min-h-[720px] lg:h-[650px] flex flex-col gap-6 animate-in fade-in duration-300">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 glass-premium-dark p-6 rounded-3xl">
             <div className="text-left">
               <h2 className="text-2xl font-light text-white tracking-tight">Réseau des Pharmacies agréées</h2>
@@ -586,9 +628,9 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 h-0">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 lg:h-0">
             {/* LISTE DES PHARMACIES A GAUCHE */}
-            <div className="lg:col-span-4 flex flex-col h-full glass-premium-dark p-6 rounded-3xl">
+            <div className="lg:col-span-4 flex flex-col min-h-[320px] lg:h-full glass-premium-dark p-6 rounded-3xl">
               <span className="text-[10px] font-black text-white/50 uppercase tracking-widest text-left block mb-4">
                 Liste des Pharmacies
               </span>
@@ -597,7 +639,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                 {(selectedZone ? allPharmacies.filter(p => p.zone === selectedZone) : allPharmacies).map(p => (
                   <div
                     key={p.id}
-                    onClick={() => setPatientLocation({ lat: p.latitude, lng: p.longitude })}
+                      onClick={() => setSelectedPharmacyId(p.id)}
                     className="p-5 bg-white/5 hover:bg-[#00f0ff]/10 cursor-none rounded-2xl border border-white/10 hover:border-[#00f0ff]/30 transition-all flex flex-col gap-1.5 text-left"
                     data-cursor-magnet
                   >
@@ -610,12 +652,14 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
             </div>
 
             {/* CARTE DROITE */}
-            <div className="lg:col-span-8 h-full rounded-3xl overflow-hidden glass-premium-dark p-2 relative">
+            <div className="lg:col-span-8 min-h-[380px] lg:h-full rounded-3xl overflow-hidden glass-premium-dark p-2 relative">
               <MapRoute
                 pharmacies={selectedZone ? allPharmacies.filter(p => p.zone === selectedZone) : allPharmacies}
                 stocks={[]}
                 patientLocation={patientLocation}
                 onPatientLocationChange={setPatientLocation}
+                selectedPharmacyId={selectedPharmacyId}
+                onPharmacySelect={setSelectedPharmacyId}
               />
             </div>
           </div>
@@ -643,14 +687,21 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                     <span className="font-mono text-[#00f0ff] font-bold text-sm bg-[#00f0ff]/10 border border-[#00f0ff]/20 px-3 py-1.5 rounded-lg">{p.code}</span>
                     <p className="text-white font-light mt-4 text-xl">Dr. {p.medecinName}</p>
                     <p className="text-xs font-bold text-[#00f0ff] uppercase tracking-widest mt-1">{p.medecinSpec}</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {(p.medicaments || []).map((medicine, index) => <span key={`${p.id}-${index}`} className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-bold text-white/80">{medicine.nom}</span>)}
+                    </div>
                   </div>
                   <div className="flex gap-3 w-full sm:w-auto shrink-0 self-end sm:self-center">
                     <button
                       onClick={() => requestRenewal(p.id)}
-                      className="flex-1 sm:flex-none px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold rounded-xl transition-colors cursor-none"
+                      disabled={p.status !== 'PENDING' || p.renouvellementDemande}
+                      className="flex-1 sm:flex-none px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-bold rounded-xl transition-colors cursor-none disabled:cursor-not-allowed disabled:opacity-40"
                       data-cursor-magnet
                     >
-                      Renouveler
+                      {p.renouvellementDemande || p.status === 'RENEWAL_REQUESTED' ? 'Demande envoyée' : p.status === 'DELIVREE' ? 'Déjà délivrée' : 'Renouveler'}
+                    </button>
+                    <button onClick={() => { const firstMedicine = p.medicaments?.[0]?.nom || ''; setSearchQuery(firstMedicine); setActiveTab('recherche'); if (firstMedicine) handleSearchMeds(firstMedicine); }} className="flex-1 sm:flex-none rounded-xl border border-[#00f0ff]/30 px-4 py-3 text-xs font-bold text-[#00f0ff] hover:bg-[#00f0ff]/10" data-cursor-magnet>
+                      Acheter les médicaments
                     </button>
                     <button
                       onClick={() => setViewPdfOrdonnance(p)}
@@ -763,6 +814,8 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                 const dateText = new Date(cmd.createdAt).toLocaleDateString('fr-FR', {
                   day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
                 });
+                const elapsedSeconds = Math.max(0, (currentTime - new Date(cmd.createdAt).getTime()) / 1000);
+                const remainingSeconds = Math.max(0, 600 - elapsedSeconds);
                 
                 // Calculer les états des étapes
                 const isPaid = cmd.status === "PAYEE" || cmd.status === "EN_ROUTE" || cmd.status === "LIVREE";
@@ -889,6 +942,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                           </div>
                         </div>
                       )}
+                      {cmd.status !== "LIVREE" && <p className="mt-4 text-center text-xs font-bold text-white/60">Livraison estimée dans {Math.ceil(remainingSeconds / 60)} min</p>}
 
                       {/* DELIVERED DISP */}
                       {cmd.status === "LIVREE" && (
@@ -1061,7 +1115,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
 
                   {/* Option 2: Reservation */}
                   <button
-                    onClick={processFakeCheckout}
+                    onClick={processReservation}
                     className="w-full py-4.5 rounded-2xl bg-transparent hover:bg-white/5 text-white font-bold text-xs uppercase tracking-widest transition-all cursor-none flex items-center justify-center gap-3 border border-white/20"
                     data-cursor-magnet
                   >
@@ -1077,14 +1131,14 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
 
       {/* PDF ORDONNANCE MODAL */}
       {viewPdfOrdonnance && (
-        <div className="fixed inset-0 bg-[#050505]/90 backdrop-blur-xl z-[2000] flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-2xl h-[85vh] rounded-[32px] relative flex flex-col overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-            <div className="bg-[#050505] text-white p-5 flex justify-between items-center border-b border-white/10">
-              <span className="font-mono text-xs font-bold tracking-widest text-[#00f0ff]">APERÇU OFFICIEL - {viewPdfOrdonnance.code}</span>
-              <div className="flex items-center gap-3">
+        <div className="fixed inset-0 bg-[#050505]/90 backdrop-blur-xl z-[2000] flex items-center justify-center p-2 sm:p-4">
+          <div className="bg-white w-full max-w-3xl h-[92vh] rounded-2xl sm:rounded-[32px] relative flex min-h-0 flex-col overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+            <div className="bg-[#050505] text-white p-4 sm:p-5 flex flex-wrap justify-between items-center gap-3 border-b border-white/10">
+              <span className="min-w-0 truncate font-mono text-[10px] sm:text-xs font-bold tracking-widest text-[#00f0ff]">APERÇU OFFICIEL - {viewPdfOrdonnance.code}</span>
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   onClick={() => window.print()}
-                  className="px-5 py-2 bg-white text-black hover:bg-[#00f0ff] rounded-xl text-xs font-bold flex items-center gap-2 transition-colors cursor-none mr-2 uppercase tracking-widest"
+                  className="px-3 sm:px-5 py-2 bg-white text-black hover:bg-[#00f0ff] rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-2 transition-colors cursor-none uppercase tracking-widest"
                   data-cursor-magnet
                 >
                   <Printer size={14}/> Imprimer
@@ -1099,27 +1153,27 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
               </div>
             </div>
             
-            <div id="print-prescription" className="p-12 flex-1 overflow-y-auto font-sans bg-white relative text-left" style={{ backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
-              <div className="absolute top-12 left-12 opacity-5 pointer-events-none"><HeartPulse size={200} /></div>
+            <div id="print-prescription" className="p-5 sm:p-12 flex-1 min-h-0 overflow-y-auto font-sans bg-white relative text-left text-black" style={{ backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+              <div className="absolute top-8 left-8 opacity-5 pointer-events-none sm:top-12 sm:left-12"><HeartPulse size={160} /></div>
 
-              <div className="flex justify-between items-start border-b-[6px] border-black pb-8 relative z-10 font-sans">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b-[4px] sm:border-b-[6px] border-black pb-6 sm:pb-8 relative z-10 font-sans">
                 <div>
-                  <h1 className="text-4xl font-serif font-black text-black leading-tight">Dr. {viewPdfOrdonnance.medecinName}</h1>
+                  <h1 className="text-2xl sm:text-4xl font-serif font-black text-black leading-tight">Dr. {viewPdfOrdonnance.medecinName}</h1>
                   <p className="text-sm text-black/60 mt-2 font-bold tracking-wider uppercase">{viewPdfOrdonnance.medecinSpec}</p>
                   <p className="text-[10px] text-black/40 mt-1.5 uppercase tracking-widest font-black">Apteka • Antananarivo, Madagascar</p>
                 </div>
-                <div className="text-right text-xs bg-slate-50 p-5 rounded-2xl border border-slate-200 shrink-0 shadow-sm">
+                <div className="text-left sm:text-right text-xs bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 shrink-0 shadow-sm">
                   <div className="mb-3"><b className="text-black/40 uppercase text-[9px] tracking-widest block mb-1">Date d'émission</b><span className="font-bold text-black text-sm">{new Date(viewPdfOrdonnance.dateEmission).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
                   <div><b className="text-black/40 uppercase text-[9px] tracking-widest block mb-1">Patient</b><span className="font-bold text-black text-sm">{user.firstName} {user.lastName}</span></div>
                 </div>
               </div>
               
-              <div className="py-12 min-h-[300px] relative z-10">
-                <h2 className="text-xl font-bold mb-8 italic text-black border-l-[6px] border-black pl-5 uppercase tracking-widest">Prescription Médicale</h2>
+              <div className="py-8 sm:py-12 min-h-[300px] relative z-10">
+                <h2 className="text-base sm:text-xl font-bold mb-6 sm:mb-8 italic text-black border-l-4 sm:border-l-[6px] border-black pl-3 sm:pl-5 uppercase tracking-widest">Prescription Médicale</h2>
                 {viewPdfOrdonnance.medicaments.map((m, i) => (
-                  <div key={i} className="mb-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                  <div key={i} className="mb-5 bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <div className="flex justify-between items-start flex-wrap gap-4">
-                      <p className="text-xl font-bold text-black flex items-center gap-3">
+                      <p className="text-base sm:text-xl font-bold text-black flex items-center gap-3">
                         <span className="text-black/40 font-serif text-3xl font-black">Rx</span> {m.nom}
                       </p>
                       <div className="flex gap-2">

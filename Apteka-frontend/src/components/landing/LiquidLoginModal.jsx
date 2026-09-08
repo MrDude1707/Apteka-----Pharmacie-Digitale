@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import PatientAuth from '../PatientAuth';
 
-export default function LiquidLoginModal({ isOpen, onClose, onLoginSuccess, handleQuickDemoLogin }) {
+export default function LiquidLoginModal({ isOpen, onClose, onLoginSuccess }) {
   
   // Bloquer le scroll de la page quand le modal est ouvert
   useEffect(() => {
@@ -63,8 +63,7 @@ export default function LiquidLoginModal({ isOpen, onClose, onLoginSuccess, hand
             */}
             <PatientAuth 
               onLoginSuccess={onLoginSuccess} 
-              onDemoClick={handleQuickDemoLogin} 
-              defaultView="login" 
+              initialView="login"
             />
           </motion.div>
         </motion.div>

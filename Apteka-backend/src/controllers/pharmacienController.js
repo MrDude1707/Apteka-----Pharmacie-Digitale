@@ -276,6 +276,16 @@ async function getMyPharmacyCommandes(req, res) {
       orderBy: { createdAt: 'desc' }
     });
 
+    const now = Date.now();
+    await Promise.all(commandes.map(async commande => {
+      const elapsedSeconds = (now - new Date(commande.createdAt).getTime()) / 1000;
+      const nextStatus = elapsedSeconds >= 600 ? 'LIVREE' : elapsedSeconds >= 180 && commande.status === 'PAYEE' ? 'EN_ROUTE' : commande.status;
+      if (nextStatus !== commande.status && ['PAYEE', 'EN_ROUTE'].includes(commande.status)) {
+        commande.status = nextStatus;
+        await prisma.commande.update({ where: { id: commande.id }, data: { status: nextStatus } });
+      }
+    }));
+
     return res.status(200).json(commandes);
   } catch (error) {
     console.error("Erreur getMyPharmacyCommandes :", error);
@@ -290,6 +300,11 @@ async function updateCommandeStatus(req, res) {
   const { id } = req.params;
   const { status } = req.body;
   const pharmacieId = req.user.profile.pharmacieId;
+  const allowedTransitions = {
+    PAYEE: ['EN_ROUTE'],
+    EN_ROUTE: ['LIVREE'],
+    LIVREE: []
+  };
 
   try {
     if (!pharmacieId) {
@@ -300,6 +315,10 @@ async function updateCommandeStatus(req, res) {
       return res.status(400).json({ error: "L'ID de la commande et le nouveau statut sont requis." });
     }
 
+    if (!Object.prototype.hasOwnProperty.call(allowedTransitions, status)) {
+      return res.status(400).json({ error: "Statut de commande invalide." });
+    }
+
     // Vérifier que la commande appartient à la pharmacie du pharmacien
     const commande = await prisma.commande.findUnique({
       where: { id }
@@ -307,6 +326,10 @@ async function updateCommandeStatus(req, res) {
 
     if (!commande || commande.pharmacieId !== pharmacieId) {
       return res.status(403).json({ error: "Vous n'êtes pas autorisé à modifier cette commande." });
+    }
+
+    if (!allowedTransitions[commande.status].includes(status)) {
+      return res.status(409).json({ error: `Transition impossible : ${commande.status} vers ${status}.` });
     }
 
     const updatedCommande = await prisma.commande.update({

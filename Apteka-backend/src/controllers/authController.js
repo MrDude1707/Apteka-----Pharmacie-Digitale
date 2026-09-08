@@ -257,6 +257,7 @@ async function login(req, res) {
         role: profile.role,
         status: profile.status,
         zone: profile.zone,
+        photoUrl: profile.photoUrl,
         pharmacie
       }
     });
@@ -287,6 +288,7 @@ async function getMe(req, res) {
       role: profile?.role,
       status: profile?.status,
       zone: profile?.zone,
+      photoUrl: profile?.photoUrl,
       pharmacie
     });
   } catch (error) {
@@ -649,14 +651,21 @@ async function resendOtp(req, res) {
  * METTRE À JOUR MON PROFIL (téléphone, zone — connecté)
  */
 async function updateMe(req, res) {
-  const { phone, zone } = req.body;
+  const { firstName, lastName, phone, zone, photoUrl } = req.body;
+
+  if (photoUrl && (!photoUrl.startsWith('data:image/') || photoUrl.length > 2_000_000)) {
+    return res.status(400).json({ error: "La photo doit être une image valide de moins de 1,5 Mo." });
+  }
 
   try {
     const updated = await prisma.profile.update({
       where: { userId: req.user.id },
       data: {
         phone: phone !== undefined ? phone : undefined,
-        zone: zone !== undefined ? zone : undefined
+        zone: zone !== undefined ? zone : undefined,
+        firstName: firstName !== undefined ? firstName.trim() : undefined,
+        lastName: lastName !== undefined ? lastName.trim() : undefined,
+        photoUrl: photoUrl !== undefined ? photoUrl : undefined
       }
     });
 

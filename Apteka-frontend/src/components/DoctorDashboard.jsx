@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, UserPlus, Pill, Plus, Trash2, Send, CheckCircle2, History, MapPin, Eye, Navigation, Users, Stethoscope, MessageCircle, X, RefreshCw, ClipboardList } from 'lucide-react';
 import { API_URL } from '../config';
+import { notify } from '../utils/notify';
 import PrescriptionPreview from './ui/PrescriptionPreview';
 import DashboardLayout from './dashboard/DashboardLayout';
 
@@ -156,10 +157,10 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
       });
       const data = await res.json();
       if (res.ok) {
-        alert("Renouvellement approuvé ! Nouveau code généré : " + data.newOrdonnance.code);
+        notify("Renouvellement approuvé ! Nouveau code généré : " + data.newOrdonnance.code, 'success');
         loadRenewals();
       } else {
-        alert(data.error || "Une erreur est survenue lors de l'approbation.");
+        notify(data.error || "Une erreur est survenue lors de l'approbation.", 'error');
       }
     } catch (err) {
       console.error(err);
@@ -250,7 +251,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
     if (!med) return;
 
     if (prescribedItems.some(item => item.medicamentId === med.id)) {
-      alert("Ce médicament est déjà présent dans l'ordonnance.");
+      notify("Ce médicament est déjà présent dans l'ordonnance.", 'error');
       return;
     }
 
@@ -279,7 +280,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
   const handleSignPrescription = async () => {
     if (!foundPatient) return;
     if (prescribedItems.length === 0) {
-      alert("Veuillez ajouter au moins un médicament à l'ordonnance.");
+      notify("Veuillez ajouter au moins un médicament à l'ordonnance.", 'error');
       return;
     }
 

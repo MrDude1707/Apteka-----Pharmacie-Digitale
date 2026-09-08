@@ -13,7 +13,7 @@ function haversineDistanceKm(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-export default function MapRoute({ pharmacies, stocks, patientLocation, onPatientLocationChange }) {
+export default function MapRoute({ pharmacies, stocks, patientLocation, onPatientLocationChange, selectedPharmacyId, onPharmacySelect }) {
   const { isLoaded } = useJsApiLoader({ googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY });
   const [directions, setDirections] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
@@ -67,8 +67,10 @@ export default function MapRoute({ pharmacies, stocks, patientLocation, onPatien
   }, [isLoaded, patientLocation, selectedPharma]);
 
   useEffect(() => {
-    if (nearestPharmacy) setSelectedPharma(nearestPharmacy);
-  }, [nearestPharmacy]);
+    if (selectedPharmacyId) {
+      setSelectedPharma(pharmacies.find(pharmacy => pharmacy.id === selectedPharmacyId) || nearestPharmacy);
+    } else if (nearestPharmacy) setSelectedPharma(nearestPharmacy);
+  }, [nearestPharmacy, selectedPharmacyId, pharmacies]);
 
   const onLoad = useCallback(function callback(map) { setMapInstance(map); }, []);
   const onUnmount = useCallback(function callback(map) { setMapInstance(null); }, []);
@@ -76,7 +78,7 @@ export default function MapRoute({ pharmacies, stocks, patientLocation, onPatien
   if (!isLoaded) return <div className="w-full h-[550px] rounded-2xl bg-gray-100 animate-pulse" />;
 
   return (
-    <div className="relative w-full h-[550px] rounded-2xl overflow-hidden border border-emerald-100 shadow-sm">
+    <div className="relative w-full h-[clamp(360px,60vh,550px)] rounded-2xl overflow-hidden border border-emerald-100 shadow-sm">
       {routeInfo && selectedPharma && (
         <div className="absolute top-4 left-4 z-[10] p-4 bg-white/95 backdrop-blur-md rounded-xl shadow-xl flex flex-col gap-2 max-w-xs">
           <span className="text-xs font-semibold uppercase text-emerald-600 flex items-center gap-1.5"><Navigation size={14} /> Itinéraire Trouvé</span>
@@ -110,7 +112,7 @@ export default function MapRoute({ pharmacies, stocks, patientLocation, onPatien
           else if (!hasStock) iconUrl = 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png';
 
           return (
-            <Marker key={pharma.id} position={{ lat: pharma.latitude, lng: pharma.longitude }} icon={{ url: iconUrl }} onClick={() => setSelectedPharma(pharma)}>
+            <Marker key={pharma.id} position={{ lat: pharma.latitude, lng: pharma.longitude }} icon={{ url: iconUrl }} onClick={() => { setSelectedPharma(pharma); onPharmacySelect?.(pharma.id); }}>
               {selectedPharma?.id === pharma.id && (
                 <InfoWindow onCloseClick={() => setSelectedPharma(null)}>
                   <div className="p-2 text-xs">

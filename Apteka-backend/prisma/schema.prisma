@@ -57,6 +57,7 @@ model Profile {
   status      AccountStatus @default(PENDING)
   phone       String?
   zone        String?
+  photoUrl    String?
 
   pharmacieId String?
   pharmacie   Pharmacie?    @relation(fields: [pharmacieId], references: [id])
