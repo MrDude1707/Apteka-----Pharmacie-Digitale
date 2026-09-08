@@ -130,7 +130,7 @@ export default function DashboardLayout({
                   aria-current={isActive ? 'page' : undefined}
                   className={`flex items-center gap-4 px-5 py-4 rounded-xl font-medium transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] tracking-[0.5px] cursor-none ${
                     isActive 
-                    ? 'nav-active text-white bg-white/10 translate-x-2'
+                    ? 'nav-active text-white bg-white/10 translate-x-2' 
                       : 'text-white/50 hover:text-white hover:bg-white/[0.08] hover:translate-x-2'
                   }`}
                   data-cursor-magnet
@@ -227,7 +227,7 @@ export default function DashboardLayout({
                 onClick={() => setActiveTab(item.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all text-xs whitespace-nowrap cursor-none ${
                   isActive 
-                    ? 'nav-active bg-gradient-to-r from-[#00f0ff] to-blue-500 text-black shadow-lg'
+                    ? 'nav-active bg-gradient-to-r from-[#00f0ff] to-blue-500 text-black shadow-lg' 
                     : 'text-white/50 bg-white/5 border border-white/10 hover:bg-white/10'
                 }`}
               >
