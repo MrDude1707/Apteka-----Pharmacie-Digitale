@@ -186,6 +186,15 @@ body {
 .dashboard-root .text-white\/40 { color: rgba(255,255,255,.62) !important; }
 .dashboard-root .text-white\/50 { color: rgba(255,255,255,.72) !important; }
 
+/* Harmonisation de l'espace administrateur avec les autres dashboards. */
+.dashboard-root [class~="bg-white/50"] { background: rgba(255,255,255,.05) !important; border-color: rgba(255,255,255,.11) !important; }
+.dashboard-root [class~="bg-white/70"] { background: rgba(0,0,0,.28) !important; border-color: rgba(255,255,255,.14) !important; color: rgba(255,255,255,.92) !important; }
+.dashboard-root [class~="border-slate-200/50"] { border-color: rgba(255,255,255,.11) !important; }
+.dashboard-root [class~="text-slate-800"], .dashboard-root [class~="text-slate-850"] { color: rgba(255,255,255,.94) !important; }
+.dashboard-root [class~="text-slate-400"], .dashboard-root [class~="text-slate-450"], .dashboard-root [class~="text-slate-455"], .dashboard-root [class~="text-slate-500"] { color: rgba(255,255,255,.66) !important; }
+.dashboard-root table { border-color: rgba(255,255,255,.1); }
+.dashboard-root th { color: rgba(255,255,255,.66) !important; }
+
 [data-cursor-magnet] { cursor: pointer; }
 
 /* Focus visible et lecture confortable pour clavier/souris */
