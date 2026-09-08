@@ -195,6 +195,59 @@ body {
 .dashboard-root table { border-color: rgba(255,255,255,.1); }
 .dashboard-root th { color: rgba(255,255,255,.66) !important; }
 
+/* Design system des espaces métiers : bleu médical, panneaux hiérarchisés et
+   actions immédiatement identifiables. */
+.dashboard-root {
+  background:
+    radial-gradient(circle at 15% 8%, rgba(14, 116, 144, .22), transparent 30rem),
+    radial-gradient(circle at 90% 92%, rgba(30, 64, 175, .18), transparent 34rem),
+    #07111f;
+}
+
+.dashboard-root .glass-premium-dark {
+  background: linear-gradient(145deg, rgba(15, 30, 50, .94), rgba(9, 20, 35, .9)) !important;
+  border-color: rgba(125, 211, 252, .16) !important;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, .26), inset 0 1px rgba(255,255,255,.05) !important;
+}
+
+.dashboard-root .dash-sidebar {
+  background: linear-gradient(180deg, rgba(8, 26, 45, .98), rgba(6, 16, 30, .98)) !important;
+  border-color: rgba(56, 189, 248, .22) !important;
+}
+
+.dashboard-root .dashboard-header {
+  border-left: 4px solid #22d3ee !important;
+  background: linear-gradient(100deg, rgba(10, 33, 55, .96), rgba(13, 43, 71, .82)) !important;
+}
+
+.dashboard-root .dashboard-content {
+  border-top: 1px solid rgba(103, 232, 249, .22) !important;
+}
+
+.dashboard-root .nav-active {
+  background: linear-gradient(90deg, rgba(34,211,238,.24), rgba(59,130,246,.16)) !important;
+  border: 1px solid rgba(103,232,249,.38) !important;
+  box-shadow: inset 3px 0 #22d3ee, 0 8px 22px rgba(8,145,178,.16);
+}
+
+.dashboard-root input,
+.dashboard-root select,
+.dashboard-root textarea {
+  border-color: rgba(125, 211, 252, .2) !important;
+  background-color: rgba(2, 12, 25, .58) !important;
+}
+
+.dashboard-root input::placeholder,
+.dashboard-root textarea::placeholder { color: rgba(226,232,240,.52) !important; }
+
+.dashboard-root tr:hover td { background: rgba(34, 211, 238, .055) !important; }
+
+@media (max-width: 640px) {
+  .dashboard-root .dashboard-header { align-items: flex-start; gap: 1rem; border-left-width: 3px !important; }
+  .dashboard-root .dashboard-header h1 { font-size: 1.55rem; }
+  .dashboard-root .dash-content-card { border-radius: 18px; }
+}
+
 [data-cursor-magnet] { cursor: pointer; }
 
 /* Focus visible et lecture confortable pour clavier/souris */
