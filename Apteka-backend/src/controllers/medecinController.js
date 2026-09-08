@@ -90,9 +90,31 @@ async function createOrdonnance(req, res) {
       return res.status(400).json({ error: "Veuillez spécifier un patient et au moins un médicament prescrit." });
     }
 
-    const patient = await prisma.user.findUnique({ where: { id: patientId } });
-    if (!patient) {
+    const patient = await prisma.user.findUnique({
+      where: { id: patientId },
+      include: { profile: true }
+    });
+    if (!patient || !patient.profile || patient.profile.role !== 'PATIENT') {
       return res.status(404).json({ error: "Le patient spécifié est introuvable." });
+    }
+    if (patient.profile.status !== 'ACTIVE') {
+      return res.status(409).json({ error: "Le compte de ce patient n'est pas actif." });
+    }
+
+    const invalidMedication = medicaments.some(item => (
+      !item
+      || typeof item.medicamentId !== 'string'
+      || typeof item.nom !== 'string'
+      || !item.nom.trim()
+      || !Number.isInteger(Number(item.quantite))
+      || Number(item.quantite) < 1
+      || typeof item.posologie !== 'string'
+      || !item.posologie.trim()
+      || typeof item.duree !== 'string'
+      || !item.duree.trim()
+    ));
+    if (invalidMedication) {
+      return res.status(400).json({ error: "Chaque médicament doit avoir un nom, une quantité, une posologie et une durée valides." });
     }
 
     const code = 'ORD-' + Math.floor(1000 + Math.random() * 9000).toString();

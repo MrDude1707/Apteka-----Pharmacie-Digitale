@@ -5,6 +5,10 @@ import { notify } from '../utils/notify';
 import PrescriptionPreview from './ui/PrescriptionPreview';
 import DashboardLayout from './dashboard/DashboardLayout';
 
+function normalizeSearchText(value = '') {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
 export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
   // Patient Search State
   const [patientEmail, setPatientEmail] = useState('');
@@ -13,6 +17,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
 
   // Medicines Directory
   const [medicaments, setMedicaments] = useState([]);
+  const [medicationSearch, setMedicationSearch] = useState('');
   
   // Prescription Builder State
   const [prescribedItems, setPrescribedItems] = useState([]); // Array of { medicamentId, nom, dosage, quantite, posologie, duree }
@@ -50,6 +55,14 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
   const [successMsg, setSuccessMsg] = useState('');
   const [successCode, setSuccessCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const filteredMedicaments = medicaments.filter(medicament => {
+    const query = normalizeSearchText(medicationSearch.trim());
+    if (!query) return true;
+    return [medicament.nom, medicament.substanceActive, medicament.categorie, medicament.forme]
+      .filter(Boolean)
+      .some(value => normalizeSearchText(value).includes(query));
+  });
 
   // Load public medicines list
   useEffect(() => {
@@ -139,6 +152,11 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
           medicaments: typeof r.medicaments === 'string' ? JSON.parse(r.medicaments) : r.medicaments
         }));
         setRenewals(parsedRenewals);
+        const lastNotifiedRenewal = localStorage.getItem('apteka:last-renewal-notification');
+        if (parsedRenewals[0] && parsedRenewals[0].id !== lastNotifiedRenewal) {
+          localStorage.setItem('apteka:last-renewal-notification', parsedRenewals[0].id);
+          window.dispatchEvent(new CustomEvent('apteka:doctor-notification', { detail: parsedRenewals[0] }));
+        }
       }
     } catch (err) {
       console.error(err);
@@ -175,6 +193,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
 
   // Chat functions
   const loadChat = async (patientId) => {
+    setLoadingChat(true);
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/api/medecin/messages/${patientId}`, {
@@ -186,6 +205,9 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
       }
     } catch (err) {
       console.error(err);
+      notify("Impossible de charger cette conversation.", 'error');
+    } finally {
+      setLoadingChat(false);
     }
   };
 
@@ -207,14 +229,19 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
       if (res.ok) {
         setNewMessageText('');
         loadChat(activeChatPatient.userId);
+      } else {
+        const data = await res.json();
+        notify(data.error || "Impossible d'envoyer le message.", 'error');
       }
     } catch (err) {
       console.error(err);
+      notify("Erreur réseau lors de l'envoi du message.", 'error');
     }
   };
 
   useEffect(() => {
     if (!activeChatPatient) return;
+    setChatMessages([]);
     loadChat(activeChatPatient.userId);
     const interval = setInterval(() => {
       loadChat(activeChatPatient.userId);
@@ -374,7 +401,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
               <span className="text-[10px] font-black tracking-widest text-[#00f0ff] uppercase">Étape 1</span>
               <h3 className="text-lg font-light text-white tracking-tight">Rechercher le Patient rattaché</h3>
               
-              <form onSubmit={handleSearchPatient} className="flex gap-2 mt-1">
+              <form onSubmit={handleSearchPatient} className="flex flex-col gap-2 mt-1 sm:flex-row">
                 <div className="relative flex-1">
                   <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
                   <input
@@ -388,7 +415,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                 </div>
                 <button
                   type="submit"
-                  className="px-6 py-3.5 bg-white text-black hover:bg-[#00f0ff] rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-none"
+                  className="px-6 py-3.5 bg-white text-black hover:bg-[#00f0ff] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-none"
                   data-cursor-magnet
                 >
                   <Search size={14} />
@@ -424,19 +451,29 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
               
               <div className="flex flex-col gap-5 mt-1">
                 <div className="flex flex-col gap-2">
+                  <label className="text-[9px] font-black text-white/50 uppercase tracking-widest">Rechercher dans le registre</label>
+                  <input
+                    type="search"
+                    value={medicationSearch}
+                    onChange={(e) => setMedicationSearch(e.target.value)}
+                    placeholder="Nom, substance active ou catégorie..."
+                    className="w-full px-4 py-3.5 rounded-xl bg-black/40 border border-white/10 focus:border-[#00f0ff] focus:outline-none text-xs font-medium text-white placeholder-white/30"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
                   <label className="text-[9px] font-black text-white/50 uppercase tracking-widest">Sélectionner un produit dans le registre</label>
                   <select
                     value={selectedMedId}
                     onChange={(e) => setSelectedMedId(e.target.value)}
                     className="w-full px-4 py-3.5 rounded-xl bg-black/40 border border-white/10 focus:border-[#00f0ff] focus:outline-none text-xs transition-all font-medium text-white appearance-none"
                   >
-                    {medicaments.map(m => (
+                    {filteredMedicaments.map(m => (
                       <option key={m.id} value={m.id} className="bg-zinc-900">{m.nom} ({m.forme})</option>
                     ))}
                   </select>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="flex flex-col gap-2 col-span-2">
                     <label className="text-[9px] font-black text-white/50 uppercase tracking-widest">Dosage unitaire</label>
                     <input
@@ -621,7 +658,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
             <p className="text-xs text-white/50 mt-2">Recherchez un produit pour identifier en temps réel les pharmacies de votre zone ayant des stocks disponibles avant de rédiger l'ordonnance.</p>
           </div>
 
-          <div className="flex gap-4 items-end">
+          <div className="flex flex-col gap-4 items-stretch sm:flex-row sm:items-end">
             <div className="flex-1 flex flex-col gap-2">
               <label className="text-[10px] font-black text-white/50 uppercase tracking-widest">Sélectionner le médicament à vérifier</label>
               <select
@@ -629,7 +666,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                 onChange={(e) => setLookupMedId(e.target.value)}
                 className="w-full px-5 py-4 rounded-xl bg-black/40 border border-white/10 focus:border-[#00f0ff] focus:outline-none text-sm font-medium text-white appearance-none"
               >
-                {medicaments.map(m => (
+                {filteredMedicaments.map(m => (
                   <option key={m.id} value={m.id} className="bg-zinc-900">{m.nom} ({m.forme})</option>
                 ))}
               </select>
@@ -637,7 +674,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
             <button
               onClick={handleLookupStocks}
               disabled={searchingStocks}
-              className="px-8 py-4 bg-white text-black hover:bg-[#00f0ff] rounded-xl text-sm font-bold transition-all duration-300 flex items-center gap-2 cursor-none disabled:opacity-50"
+              className="px-8 py-4 bg-white text-black hover:bg-[#00f0ff] rounded-xl text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 cursor-none disabled:opacity-50"
               data-cursor-magnet
             >
               <Search size={16} />
@@ -710,7 +747,8 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
               <p className="text-sm font-medium">Vous n'avez pas encore rédigé d'ordonnance sur la plateforme.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-white/10 text-white/40 uppercase text-[10px] tracking-widest font-black">
@@ -748,6 +786,24 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                 </tbody>
               </table>
             </div>
+            <div className="grid gap-4 md:hidden">
+              {history.map(p => (
+                <article key={p.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-bold tracking-widest text-[#00f0ff]">{p.code}</span>
+                    <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${p.status === 'DELIVREE' ? 'bg-green-500/10 text-green-400' : 'bg-orange-500/10 text-orange-400'}`}>
+                      {p.status === 'DELIVREE' ? 'Délivrée' : 'En attente'}
+                    </span>
+                  </div>
+                  <p className="mt-4 text-sm font-bold text-white">{p.patientName}</p>
+                  <p className="mt-1 text-xs text-white/50">{new Date(p.dateEmission).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {p.medicaments.map((medicine, index) => <span key={index} className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[10px] text-white/80">{medicine.nom} · {medicine.quantite}</span>)}
+                  </div>
+                </article>
+              ))}
+            </div>
+            </>
           )}
         </div>
       )}
@@ -774,7 +830,8 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
               <p className="text-sm font-medium">Aucun patient ne vous a encore choisi comme médecin traitant.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-white/10 text-white/40 uppercase text-[10px] tracking-widest font-black">
@@ -810,7 +867,11 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                         </button>
                         <button
                           onClick={() => {
+                            setPatient(p);
                             setPatientEmail(p.email);
+                            setSearchError('');
+                            setSuccessCode('');
+                            setSuccessMsg('');
                             setActiveTab('medecin_prescrire');
                           }}
                           className="px-4 py-2.5 rounded-xl bg-white text-black hover:bg-[#00f0ff] text-[11px] font-bold transition-all cursor-none"
@@ -824,6 +885,20 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                 </tbody>
               </table>
             </div>
+            <div className="grid gap-4 md:hidden">
+              {myPatients.map(patient => (
+                <article key={patient.userId} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left">
+                  <p className="text-sm font-bold text-white">{patient.firstName} {patient.lastName}</p>
+                  <p className="mt-1 break-all text-xs text-white/60">{patient.email}</p>
+                  <p className="mt-1 text-xs text-white/60">{patient.phone || 'Téléphone non renseigné'}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button onClick={() => setActiveChatPatient(patient)} className="flex-1 rounded-xl bg-white/10 px-3 py-2.5 text-[11px] font-bold text-white">Discuter</button>
+                    <button onClick={() => { setPatient(patient); setPatientEmail(patient.email); setActiveTab('medecin_prescrire'); }} className="flex-1 rounded-xl bg-white px-3 py-2.5 text-[11px] font-bold text-black">Prescrire</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+            </>
           )}
         </div>
       )}
@@ -848,13 +923,15 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
               {renewals.map(r => (
                 <div key={r.id} className="p-6 rounded-[20px] bg-white/5 border border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 hover:bg-white/10 transition-colors">
                   <div className="flex-1 flex flex-col gap-3 w-full">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
                       <span className="font-mono text-[#00f0ff] font-bold text-xs bg-[#00f0ff]/10 px-3 py-1.5 rounded-lg border border-[#00f0ff]/20">
                         {r.code}
                       </span>
-                      <span className="text-sm font-medium text-white/70">
-                        Patient : <strong className="font-bold text-white">{r.patient?.profile?.firstName} {r.patient?.profile?.lastName}</strong> ({r.patient?.email})
-                      </span>
+                      <span className="rounded-full bg-orange-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-orange-300">Demande à traiter</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white/70">Patient : <strong className="font-bold text-white">{r.patient?.profile?.firstName} {r.patient?.profile?.lastName}</strong></p>
+                      <p className="mt-1 text-xs text-white/50">{r.patient?.email}</p>
                     </div>
                     
                     <div className="bg-black/30 p-4 rounded-xl border border-white/5 text-sm">
@@ -876,7 +953,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                   <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
                     <button
                       onClick={() => handleApproveRenewal(r.id)}
-                      className="px-6 py-4 bg-gradient-to-r from-[#00f0ff] to-blue-500 text-black rounded-xl text-xs font-bold hover:from-[#00c0cc] hover:to-blue-600 shadow-lg shadow-[#00f0ff]/20 transition-all cursor-none"
+                      className="w-full px-6 py-4 bg-gradient-to-r from-[#00f0ff] to-blue-500 text-black rounded-xl text-xs font-bold hover:from-[#00c0cc] hover:to-blue-600 shadow-lg shadow-[#00f0ff]/20 transition-all cursor-none md:w-auto"
                       data-cursor-magnet
                     >
                       Approuver & Générer
@@ -909,7 +986,9 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-5 bg-transparent">
-              {chatMessages.length === 0 ? (
+              {loadingChat ? (
+                <div className="flex-1 flex items-center justify-center text-sm text-white/50">Chargement de la conversation...</div>
+              ) : chatMessages.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-white/30">
                   <MessageCircle size={64} className="mb-6 opacity-40 text-[#00f0ff]" />
                   <p className="text-sm font-bold text-white/60">Canal de communication chiffré ouvert.</p>

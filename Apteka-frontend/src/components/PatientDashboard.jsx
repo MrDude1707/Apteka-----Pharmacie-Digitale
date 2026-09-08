@@ -375,6 +375,12 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    if (activeTab !== 'prescriptions') {
+      setViewPdfOrdonnance(null);
+    }
+  }, [activeTab]);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     window.location.reload();
@@ -501,9 +507,9 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch">
+            <div className="grid grid-cols-1 gap-8 items-stretch">
               {/* RESULTS LIST */}
-              <div className="xl:col-span-5 flex flex-col gap-5 text-left">
+              <div className="flex flex-col gap-5 text-left">
                 <div className="flex justify-between items-center px-2">
                   <h4 className="font-black text-white text-sm uppercase tracking-widest">Résultats ({searchStocks.length})</h4>
                   <button
@@ -588,16 +594,6 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                     </div>
                   ))}
                 </div>
-              </div>
-              
-              {/* INTERACTIVE MAP */}
-              <div className="xl:col-span-7 h-[550px] rounded-3xl overflow-hidden glass-premium-dark p-2 relative">
-                <MapRoute
-                  pharmacies={searchStocks.map(s => s.pharmacie)}
-                  stocks={searchStocks}
-                  patientLocation={patientLocation}
-                  onPatientLocationChange={setPatientLocation}
-                />
               </div>
             </div>
           )}
@@ -1145,10 +1141,11 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                 </button>
                 <button
                   onClick={() => setViewPdfOrdonnance(null)}
-                  className="p-2.5 hover:bg-white/10 rounded-full cursor-none transition-colors text-white/50 hover:text-white"
+                  className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/70 hover:bg-white/10 hover:text-white cursor-none transition-colors"
                   data-cursor-magnet
+                  aria-label="Fermer l'aperçu de l'ordonnance"
                 >
-                  <X size={20}/>
+                  <X size={16}/> Fermer
                 </button>
               </div>
             </div>

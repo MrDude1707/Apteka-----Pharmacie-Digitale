@@ -73,7 +73,11 @@ export default function DashboardLayout({
       setHasNotification(true);
     };
     window.addEventListener('apteka:prescription-notification', handleNotification);
-    return () => window.removeEventListener('apteka:prescription-notification', handleNotification);
+    window.addEventListener('apteka:doctor-notification', handleNotification);
+    return () => {
+      window.removeEventListener('apteka:prescription-notification', handleNotification);
+      window.removeEventListener('apteka:doctor-notification', handleNotification);
+    };
   }, []);
 
   // Trigger GSAP stagger animation on first render of the dashboard layout
@@ -192,6 +196,11 @@ export default function DashboardLayout({
                   <button type="button" onClick={() => { setNotificationOpen(false); setActiveTab('prescriptions'); }} className="mt-3 w-full rounded-xl border border-white/10 bg-white/5 p-3 text-left hover:bg-white/10">
                     <p className="text-sm font-bold text-white">Nouvelle ordonnance disponible</p>
                     <p className="mt-1 text-xs text-white/50">{latestNotification.code} · Cliquez pour consulter les médicaments prescrits.</p>
+                  </button>
+                ) : latestNotification && user?.role === 'MEDECIN' ? (
+                  <button type="button" onClick={() => { setNotificationOpen(false); setActiveTab('medecin_renewals'); }} className="mt-3 w-full rounded-xl border border-white/10 bg-white/5 p-3 text-left hover:bg-white/10">
+                    <p className="text-sm font-bold text-white">Demande de renouvellement</p>
+                    <p className="mt-1 text-xs text-white/50">{latestNotification.code} · Cliquez pour traiter la demande.</p>
                   </button>
                 ) : <p className="mt-3 text-xs text-white/50">Aucune nouvelle notification.</p>}
               </div>
