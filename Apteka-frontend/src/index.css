@@ -175,15 +175,32 @@ body {
 }
 
 .glass-premium-dark {
-  background: rgba(255, 255, 255, 0.02) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
   backdrop-filter: blur(24px) !important;
   -webkit-backdrop-filter: blur(24px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  box-shadow: 0 30px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.11) !important;
+  box-shadow: 0 20px 45px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.1) !important;
 }
 
-[data-cursor-magnet], [data-cursor-magnet] * {
-  cursor: none !important;
+/* Les textes secondaires doivent rester lisibles sur les panneaux sombres. */
+.dashboard-root .text-white\/40 { color: rgba(255,255,255,.62) !important; }
+.dashboard-root .text-white\/50 { color: rgba(255,255,255,.72) !important; }
+
+[data-cursor-magnet] { cursor: pointer; }
+
+/* Focus visible et lecture confortable pour clavier/souris */
+:where(button, a, input, select, textarea, [role="button"]):focus-visible {
+  outline: 3px solid #00d9e8;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Subtle Shimmer effect on hover */
@@ -462,20 +479,7 @@ body {
   }
 }
 
-/* ==============================================
-   NATIVE NO-CURSOR OVERRIDE (HIGH-PERFORMANCE)
-   ============================================== */
-@media (pointer: fine) {
-  html, 
-  body, 
-  button, 
-  a, 
-  input, 
-  select, 
-  textarea, 
-  [role="button"],
-  .cursor-none,
-  .cursor-none * {
-    cursor: none !important;
-  }
+/* Le curseur système reste disponible : le curseur animé est décoratif. */
+@media (prefers-reduced-motion: reduce) {
+  .jelly-cursor, [data-jelly-cursor] { display: none !important; }
 }
