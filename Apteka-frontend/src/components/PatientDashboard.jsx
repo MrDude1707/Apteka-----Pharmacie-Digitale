@@ -35,6 +35,8 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
   // Prescriptions State
   const [myPrescriptions, setMyPrescriptions] = useState([]);
   const [viewPdfOrdonnance, setViewPdfOrdonnance] = useState(null);
+  const [pdfWideView, setPdfWideView] = useState(false);
+  const [pdfScale, setPdfScale] = useState(100);
 
   // Pharmacies / Map State
   const [allPharmacies, setAllPharmacies] = useState([]);
@@ -1128,10 +1130,16 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
       {/* PDF ORDONNANCE MODAL */}
       {viewPdfOrdonnance && (
         <div className="fixed inset-0 bg-[#050505]/90 backdrop-blur-xl z-[2000] flex items-center justify-center p-2 sm:p-4">
-          <div className="bg-white w-full max-w-3xl h-[92vh] rounded-2xl sm:rounded-[32px] relative flex min-h-0 flex-col overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-            <div className="bg-[#050505] text-white p-4 sm:p-5 flex flex-wrap justify-between items-center gap-3 border-b border-white/10">
+          <div className={`bg-white w-full ${pdfWideView ? 'max-w-5xl' : 'max-w-3xl'} h-[94vh] rounded-2xl sm:rounded-[32px] relative flex min-h-0 flex-col overflow-hidden shadow-2xl animate-in zoom-in duration-300 transition-[max-width]`}>
+            <div className="bg-[#07111f] text-white p-4 sm:p-5 flex flex-wrap justify-between items-center gap-3 border-b border-cyan-300/20">
               <span className="min-w-0 truncate font-mono text-[10px] sm:text-xs font-bold tracking-widest text-[#00f0ff]">APERÇU OFFICIEL - {viewPdfOrdonnance.code}</span>
               <div className="flex items-center gap-2 sm:gap-3">
+                <div className="hidden sm:flex items-center rounded-xl border border-white/15 bg-white/5 p-1" aria-label="Contrôles de lecture">
+                  <button type="button" onClick={() => setPdfScale(scale => Math.max(85, scale - 10))} className="px-2 py-1 text-xs font-black text-white/70 hover:text-white" aria-label="Réduire le texte">A−</button>
+                  <span className="min-w-10 text-center text-[10px] font-bold text-cyan-200">{pdfScale}%</span>
+                  <button type="button" onClick={() => setPdfScale(scale => Math.min(125, scale + 10))} className="px-2 py-1 text-xs font-black text-white/70 hover:text-white" aria-label="Agrandir le texte">A+</button>
+                </div>
+                <button type="button" onClick={() => setPdfWideView(wide => !wide)} className="hidden sm:block rounded-xl border border-white/15 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/75 hover:bg-white/10 hover:text-white" aria-label="Agrandir l'aperçu">{pdfWideView ? 'Format normal' : 'Agrandir'}</button>
                 <button
                   onClick={() => window.print()}
                   className="px-3 sm:px-5 py-2 bg-white text-black hover:bg-[#00f0ff] rounded-xl text-[10px] sm:text-xs font-bold flex items-center gap-2 transition-colors cursor-none uppercase tracking-widest"
@@ -1150,7 +1158,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
               </div>
             </div>
             
-            <div id="print-prescription" className="p-5 sm:p-12 flex-1 min-h-0 overflow-y-auto font-sans bg-white relative text-left text-black" style={{ backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+            <div id="print-prescription" className="p-5 sm:p-12 flex-1 min-h-0 overflow-y-auto font-sans bg-white relative text-left text-black" style={{ backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)', backgroundSize: '20px 20px', fontSize: `${pdfScale}%` }}>
               <div className="absolute top-8 left-8 opacity-5 pointer-events-none sm:top-12 sm:left-12"><HeartPulse size={160} /></div>
 
               <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b-[4px] sm:border-b-[6px] border-black pb-6 sm:pb-8 relative z-10 font-sans">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Lock, Phone, MapPin, Building, ShieldCheck, ArrowRight, Eye, Sparkles } from 'lucide-react';
+import { User, Mail, Lock, Phone, MapPin, Building, ShieldCheck, ArrowRight, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { API_URL } from '../config';
 
 export default function PatientAuth({ onLoginSuccess, onToggleRegister, initialView = 'login', medecins = [], preselectedDoctorId = null }) {
@@ -9,6 +9,7 @@ export default function PatientAuth({ onLoginSuccess, onToggleRegister, initialV
   // Form States
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -336,13 +337,16 @@ export default function PatientAuth({ onLoginSuccess, onToggleRegister, initialV
               <div className="relative">
                 <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-apple-charcoal/50" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-apple-border/40 focus:border-apple-blue focus:outline-none text-sm text-apple-dark bg-white transition-all duration-200"
+                  className="w-full pl-10 pr-12 py-2.5 rounded-xl border border-apple-border/40 focus:border-apple-blue focus:outline-none text-sm text-apple-dark bg-white transition-all duration-200"
                 />
+                <button type="button" onClick={() => setShowPassword(current => !current)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-apple-charcoal/60 hover:bg-apple-lightGrey hover:text-apple-blue" aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}>
+                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
               </div>
             </div>
 
