@@ -342,6 +342,10 @@ async function approveProfessional(req, res) {
   const { profileId } = req.params;
 
   try {
+    const current = await prisma.profile.findUnique({ where: { id: profileId } });
+    if (!current) return res.status(404).json({ error: "Profil introuvable." });
+    if (!['MEDECIN', 'PHARMACIEN'].includes(current.role)) return res.status(400).json({ error: "Seuls les profils professionnels peuvent être approuvés." });
+    if (current.status !== 'PENDING') return res.status(409).json({ error: "Ce profil a déjà été traité." });
     const profile = await prisma.profile.update({
       where: { id: profileId },
       data: { status: 'ACTIVE' }
@@ -379,6 +383,9 @@ async function rejectProfessional(req, res) {
   const { profileId } = req.params;
 
   try {
+    const current = await prisma.profile.findUnique({ where: { id: profileId } });
+    if (!current) return res.status(404).json({ error: "Profil introuvable." });
+    if (current.status !== 'PENDING') return res.status(409).json({ error: "Ce profil a déjà été traité." });
     const profile = await prisma.profile.update({
       where: { id: profileId },
       data: { status: 'REJECTED' }
@@ -395,14 +402,20 @@ async function rejectProfessional(req, res) {
  */
 async function getAllUsers(req, res) {
   try {
+    const { search = '', role, status, zone } = req.query;
     const profiles = await prisma.profile.findMany({
+      where: {
+        ...(role && role !== 'TOUS' ? { role } : {}),
+        ...(status && status !== 'TOUS' ? { status } : {}),
+        ...(zone ? { zone: { contains: zone, mode: 'insensitive' } } : {}),
+      },
       orderBy: { firstName: 'asc' }
     });
 
     const populated = [];
     for (const p of profiles) {
       const user = await prisma.user.findUnique({ where: { id: p.userId } });
-      populated.push({
+      const account = {
         id: p.id,
         userId: p.userId,
         email: user?.email,
@@ -412,7 +425,9 @@ async function getAllUsers(req, res) {
         status: p.status,
         zone: p.zone,
         createdAt: user?.createdAt
-      });
+      };
+      const normalizedSearch = String(search).trim().toLowerCase();
+      if (!normalizedSearch || `${account.firstName} ${account.lastName} ${account.email}`.toLowerCase().includes(normalizedSearch)) populated.push(account);
     }
 
     return res.status(200).json(populated);
