@@ -25,6 +25,10 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
   // Orders and Deliveries State
   const [commandes, setCommandes] = useState([]);
   const [loadingCommandes, setLoadingCommandes] = useState(false);
+  const [commandeFilter, setCommandeFilter] = useState('TOUS');
+  const [commandeSearch, setCommandeSearch] = useState('');
+  const [stockSearch, setStockSearch] = useState('');
+  const [stockFilter, setStockFilter] = useState('TOUS');
 
   // General Status States
   const [error, setError] = useState('');
@@ -183,6 +187,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
   // Validate and execute delivery
   const handleDeliverOrdonnance = async () => {
     if (!foundOrdonnance) return;
+    if (!window.confirm("Confirmer la délivrance définitive de cette ordonnance ? Cette action débitera le stock.")) return;
     setError('');
     setSuccess('');
     setDelivering(true);
@@ -505,6 +510,13 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
             </button>
           </div>
 
+          <div className="glass-premium-dark p-4 rounded-2xl flex flex-col sm:flex-row gap-3">
+            <input value={commandeSearch} onChange={e => setCommandeSearch(e.target.value)} placeholder="Rechercher par patient, email ou numéro…" className="flex-1 px-4 py-3 rounded-xl bg-black/30 border border-white/10 text-sm text-white" />
+            <select value={commandeFilter} onChange={e => setCommandeFilter(e.target.value)} className="px-4 py-3 rounded-xl bg-black/30 border border-white/10 text-sm text-white">
+              <option value="TOUS">Tous les statuts</option><option value="PAYEE">Payées</option><option value="EN_ROUTE">En route</option><option value="LIVREE">Livrées</option>
+            </select>
+          </div>
+
           {loadingCommandes && commandes.length === 0 ? (
             <div className="py-24 text-center text-white/50 flex flex-col items-center justify-center gap-4 glass-premium-dark rounded-[32px]">
               <RefreshCw size={48} className="animate-spin text-[#00f0ff]/60" />
@@ -520,7 +532,11 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
             </div>
           ) : (
             <div className="flex flex-col gap-6">
-              {commandes.map(cmd => {
+              {commandes.filter(cmd => {
+                const profile = cmd.patient?.profile || {};
+                const haystack = `${cmd.id} ${cmd.patient?.email || ''} ${profile.firstName || ''} ${profile.lastName || ''}`.toLowerCase();
+                return (commandeFilter === 'TOUS' || cmd.status === commandeFilter) && haystack.includes(commandeSearch.toLowerCase());
+              }).map(cmd => {
                 const items = typeof cmd.items === 'string' ? JSON.parse(cmd.items) : cmd.items;
                 const dateText = new Date(cmd.createdAt).toLocaleDateString('fr-FR', {
                   day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
@@ -628,6 +644,13 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
               </button>
             </div>
 
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input value={stockSearch} onChange={e => setStockSearch(e.target.value)} placeholder="Rechercher un médicament ou une substance…" className="flex-1 px-4 py-3 rounded-xl bg-black/30 border border-white/10 text-sm text-white" />
+              <select value={stockFilter} onChange={e => setStockFilter(e.target.value)} className="px-4 py-3 rounded-xl bg-black/30 border border-white/10 text-sm text-white">
+                <option value="TOUS">Tous les stocks</option><option value="FAIBLE">Stock faible (≤ 10)</option><option value="RUPTURE">Rupture</option>
+              </select>
+            </div>
+
             {loadingStocks && myStocks.length === 0 ? (
               <p className="text-center py-20 text-sm text-white/40 font-medium">Chargement de votre inventaire sécurisé...</p>
             ) : myStocks.length === 0 ? (
@@ -644,7 +667,12 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {myStocks.map(stock => (
+                    {myStocks.filter(stock => {
+                      const text = `${stock.medicament.nom} ${stock.medicament.substanceActive || ''}`.toLowerCase();
+                      const matchSearch = text.includes(stockSearch.toLowerCase());
+                      const matchFilter = stockFilter === 'TOUS' || (stockFilter === 'RUPTURE' ? stock.quantite === 0 : stock.quantite <= 10);
+                      return matchSearch && matchFilter;
+                    }).map(stock => (
                       <tr key={stock.id} className="hover:bg-white/5 transition-colors">
                         <td className="py-5 px-4 font-bold text-white text-base">{stock.medicament.nom}</td>
                         <td className="py-5 px-4 text-white/50 text-[11px] font-bold uppercase tracking-wider">{stock.medicament.substanceActive || "N/A"}</td>

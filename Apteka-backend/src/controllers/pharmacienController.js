@@ -80,6 +80,16 @@ async function deliverOrdonnance(req, res) {
       return res.status(400).json({ error: "Cette ordonnance a déjà été entièrement délivrée." });
     }
 
+    const emission = new Date(ordonnance.dateEmission);
+    const expiration = new Date(emission);
+    expiration.setFullYear(expiration.getFullYear() + 1);
+    if (Number.isNaN(emission.getTime()) || expiration <= new Date()) {
+      return res.status(409).json({ error: "Cette ordonnance est expirée et ne peut plus être délivrée." });
+    }
+    if (ordonnance.pharmacieId && ordonnance.pharmacieId !== pharmacieId) {
+      return res.status(409).json({ error: "Cette ordonnance est déjà rattachée à une autre pharmacie." });
+    }
+
     let prescritMedicaments;
     try {
       prescritMedicaments = typeof ordonnance.medicaments === 'string' 
@@ -196,7 +206,7 @@ async function getMyPharmacyStocks(req, res) {
  * REAPPROVISIONNER / METTRE À JOUR LE STOCK D'UN MÉDICAMENT DANS SON OFFICINE
  */
 async function updateStock(req, res) {
-  const { medicamentId, quantiteAjoutee } = req.body;
+  const { medicamentId, quantiteAjoutee, motif = 'reception' } = req.body;
   const pharmacieId = req.user.profile.pharmacieId;
 
   try {
@@ -204,7 +214,8 @@ async function updateStock(req, res) {
       return res.status(400).json({ error: "Aucune pharmacie rattachée à votre profil." });
     }
 
-    if (!medicamentId || quantiteAjoutee === undefined || typeof quantiteAjoutee !== 'number' || quantiteAjoutee <= 0) {
+    const motifsAutorises = ['reception', 'correction', 'perte', 'peremption'];
+    if (!medicamentId || quantiteAjoutee === undefined || !Number.isInteger(quantiteAjoutee) || quantiteAjoutee <= 0 || !motifsAutorises.includes(motif)) {
       return res.status(400).json({ error: "Veuillez spécifier un médicament et une quantité valide à ajouter." });
     }
 
