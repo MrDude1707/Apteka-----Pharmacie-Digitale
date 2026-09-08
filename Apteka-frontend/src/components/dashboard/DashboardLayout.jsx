@@ -130,7 +130,7 @@ export default function DashboardLayout({
                   aria-current={isActive ? 'page' : undefined}
                   className={`flex items-center gap-4 px-5 py-4 rounded-xl font-medium transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] tracking-[0.5px] cursor-none ${
                     isActive 
-                    ? 'nav-active text-white bg-white/10 translate-x-2' 
+                      ? 'text-white bg-white/10 translate-x-2' 
                       : 'text-white/50 hover:text-white hover:bg-white/[0.08] hover:translate-x-2'
                   }`}
                   data-cursor-magnet
@@ -170,7 +170,7 @@ export default function DashboardLayout({
       <div className="flex-grow flex flex-col min-w-0 p-6 relative z-10 gap-6">
         
         {/* Top Header bar */}
-        <header className="dash-header dashboard-header flex items-end justify-between glass-premium-dark px-6 py-4 rounded-[28px]">
+        <header className="dash-header flex items-end justify-between glass-premium-dark px-6 py-4 rounded-[100px]">
           {/* Page title / Tab Indicator */}
           <div>
             <p className="text-[0.85rem] font-semibold text-[#00f0ff] uppercase tracking-[2px] mb-1">
@@ -227,7 +227,7 @@ export default function DashboardLayout({
                 onClick={() => setActiveTab(item.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all text-xs whitespace-nowrap cursor-none ${
                   isActive 
-                    ? 'nav-active bg-gradient-to-r from-[#00f0ff] to-blue-500 text-black shadow-lg' 
+                    ? 'bg-gradient-to-r from-[#00f0ff] to-blue-500 text-black shadow-lg' 
                     : 'text-white/50 bg-white/5 border border-white/10 hover:bg-white/10'
                 }`}
               >
@@ -239,7 +239,7 @@ export default function DashboardLayout({
         </nav>
 
         {/* Content Container Panel */}
-        <main id="dashboard-content" tabIndex="-1" className="dash-content-card dashboard-content flex-grow glass-premium-dark rounded-[24px] p-4 sm:p-8 overflow-y-auto max-h-none lg:max-h-[calc(100vh-160px)]">
+        <main id="dashboard-content" tabIndex="-1" className="dash-content-card flex-grow glass-premium-dark rounded-[24px] p-4 sm:p-8 overflow-y-auto max-h-none lg:max-h-[calc(100vh-160px)]">
           {children}
         </main>
       </div>
