@@ -1,14 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-
-import { API_URL } from '../config';
 
 // Import our newly reconstructed premium components
 import HeroSection from './landing/HeroSection';
-import WhatIfHealth from './landing/WhatIfHealth';
 import FeaturesScroll from './landing/FeaturesScroll';
 import DashboardPreview from './landing/DashboardPreview';
-import ProductShowcase from './landing/ProductShowcase';
 import SecuritySection from './landing/SecuritySection';
 import TestimonialsCarousel from './landing/TestimonialsCarousel';
 import FAQSection from './landing/FAQSection';
@@ -43,14 +38,6 @@ export default function LandingPage({ onLoginSuccess, handleQuickDemoLogin }) {
 
   return (
     <div className="relative font-sans bg-[#050505] selection:bg-[#00f0ff] selection:text-black overflow-x-hidden antialiased text-white cursor-none">
-      
-      {/* Noise Overlay Cinematic (Animated) */}
-      <div 
-        className="fixed -inset-[10%] w-[120vw] h-[120vh] pointer-events-none z-[9999] opacity-[0.09] animated-grain" 
-        style={{
-          background: 'url(\'data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E\')'
-        }}
-      />
 
       {/* Persistent Fluid Background */}
       <div className="fixed inset-0 z-0 opacity-40">

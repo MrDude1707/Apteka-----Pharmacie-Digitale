@@ -463,28 +463,6 @@ body {
 }
 
 /* ==============================================
-   ANIMATED FILM GRAIN & LUSION DYNAMIC EFFECTS
-   ============================================== */
-@keyframes noise-animation {
-  0% { transform: translate(0, 0); }
-  10% { transform: translate(-1%, -2%); }
-  20% { transform: translate(-2%, 1%); }
-  30% { transform: translate(1%, -1%); }
-  40% { transform: translate(-1%, 1.5%); }
-  50% { transform: translate(-1.5%, 1%); }
-  60% { transform: translate(1%, 1.5%); }
-  70% { transform: translate(1.5%, -1%); }
-  80% { transform: translate(-1%, 0.5%); }
-  90% { transform: translate(1%, -1.5%); }
-  100% { transform: translate(0, 0); }
-}
-
-.animated-grain {
-  animation: noise-animation 0.15s infinite;
-  will-change: transform;
-}
-
-/* ==============================================
    NATIVE NO-CURSOR OVERRIDE (HIGH-PERFORMANCE)
    ============================================== */
 @media (pointer: fine) {

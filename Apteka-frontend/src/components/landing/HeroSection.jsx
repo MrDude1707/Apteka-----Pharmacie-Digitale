@@ -9,14 +9,6 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick, handleQ
     <section 
       className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#050505]"
     >
-      {/* OVERLAY GRAIN (Bruit cinématographique) */}
-      <div 
-        className="absolute inset-0 z-[1] opacity-[0.15] pointer-events-none mix-blend-overlay" 
-        style={{ 
-          backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' 
-        }} 
-      />
-
       {/* LUMIÈRES D'AMBIANCE (Glow effects) */}
       <div className="absolute top-[10%] left-[-10%] w-[40vw] h-[40vw] bg-teal-500/15 rounded-full blur-[150px] pointer-events-none animate-pulse-slow" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-emerald-500/10 rounded-full blur-[150px] pointer-events-none" />
@@ -136,7 +128,6 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick, handleQ
                 className="w-full h-full object-cover scale-100 group-hover:scale-[1.02] transition-transform duration-[2s] ease-out"
               >
                 <source src="/videos/presentation.mp4" type="video/mp4" />
-                <source src="/videos/hero-background.mp4" type="video/mp4" />
                 <p className="text-zinc-500 text-center py-20 text-xs">Votre navigateur ne supporte pas la lecture de vidéos.</p>
               </video>
 

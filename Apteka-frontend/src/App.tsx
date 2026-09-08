@@ -1,25 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import Lenis from 'lenis';
-import Navbar from './components/Navbar';
 import LandingPage from './components/LandingPage';
-import MapRoute from './components/MapRoute';
-import DoctorDashboard from './components/DoctorDashboard';
-import PharmacistDashboard from './components/PharmacistDashboard';
-import PatientDashboard from './components/PatientDashboard';
-import DashboardLayout from './components/dashboard/DashboardLayout';
-import LusionInspiredPrototype from './components/landing/LusionInspiredPrototype';
 import TextReveal from './components/ui/TextReveal';
 import WebGLBackground from './components/ui/WebGLBackground';
-import { Search, CheckCircle, ClipboardList, ShoppingCart, MessageCircle, FileText, Send, X, CreditCard, HeartPulse, Printer, Pill, Users, Check, LayoutGrid, RefreshCw } from 'lucide-react';
-import QRCode from 'react-qr-code';
+import { ClipboardList, Users, LayoutGrid, RefreshCw } from 'lucide-react';
 import { API_URL } from './config';
 
-export default function App() {
-  // ROUTE DE DEMONSTRATION LUSION
-  if (window.location.pathname === '/lusion-demo') {
-    return <LusionInspiredPrototype />;
-  }
+const DoctorDashboard = lazy(() => import('./components/DoctorDashboard'));
+const PharmacistDashboard = lazy(() => import('./components/PharmacistDashboard'));
+const PatientDashboard = lazy(() => import('./components/PatientDashboard'));
+const DashboardLayout = lazy(() => import('./components/dashboard/DashboardLayout'));
 
+function LoadingScreen() {
+  return <div className="flex h-screen items-center justify-center bg-[#050505]"><div className="w-1.5 h-1.5 bg-[#00f0ff] rounded-full animate-ping"></div></div>;
+}
+
+export default function App() {
   const [user, setUser] = useState<any>(null);
   const [welcomeUser, setWelcomeUser] = useState<any>(null);
   const [showWelcomeAnimation, setShowWelcomeAnimation] = useState<boolean>(false);

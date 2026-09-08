@@ -41,14 +41,6 @@ export default function DashboardLayout({
   return (
     <div ref={containerRef} className="dashboard-root min-h-screen bg-[#050505] text-zinc-100 font-sans flex relative overflow-hidden antialiased pt-16 xl:pt-10 cursor-none">
       
-      {/* Noise Overlay Cinematic */}
-      <div 
-        className="fixed inset-0 w-screen h-screen pointer-events-none z-[9999] opacity-[0.12]" 
-        style={{
-          background: 'url(\'data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E\')'
-        }}
-      />
-
       {/* WebGL Lusion-style Fluid Background */}
       <WebGLBackground />
       
