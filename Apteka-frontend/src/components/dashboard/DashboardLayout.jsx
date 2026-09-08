@@ -102,7 +102,7 @@ export default function DashboardLayout({
   }, { scope: containerRef, dependencies: [activeTab] });
 
   return (
-    <div ref={containerRef} className="dashboard-root min-h-screen bg-[#050505] text-zinc-100 font-sans flex relative overflow-hidden antialiased pt-16 xl:pt-10 cursor-none">
+    <div ref={containerRef} className="dashboard-root min-h-screen bg-[#050505] text-zinc-100 font-sans flex relative overflow-hidden antialiased pt-16 xl:pt-10 motion-safe:transition-colors">
       
       {/* WebGL Lusion-style Fluid Background */}
       <WebGLBackground />
@@ -127,6 +127,7 @@ export default function DashboardLayout({
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
+                  aria-current={isActive ? 'page' : undefined}
                   className={`flex items-center gap-4 px-5 py-4 rounded-xl font-medium transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] tracking-[0.5px] cursor-none ${
                     isActive 
                       ? 'text-white bg-white/10 translate-x-2' 
@@ -185,7 +186,7 @@ export default function DashboardLayout({
             <div className="px-5 py-2.5 bg-white/5 border border-white/10 rounded-full text-xs font-semibold tracking-wider text-white" data-cursor-magnet>
               {todayLabel}
             </div>
-            <button type="button" onClick={() => { setHasNotification(false); setNotificationOpen(current => !current); }} className="relative p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/50 hover:text-[#00f0ff] transition-colors cursor-none" data-cursor-magnet aria-label="Ouvrir les notifications">
+            <button type="button" onClick={() => { setHasNotification(false); setNotificationOpen(current => !current); }} className="relative p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/50 hover:text-[#00f0ff] transition-colors" data-cursor-magnet aria-label="Ouvrir les notifications" aria-expanded={notificationOpen}>
               <Bell size={18} />
               {hasNotification && <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-red-400 ring-2 ring-zinc-950" />}
             </button>
@@ -238,7 +239,7 @@ export default function DashboardLayout({
         </nav>
 
         {/* Content Container Panel */}
-        <main className="dash-content-card flex-grow glass-premium-dark rounded-[24px] p-6 sm:p-8 overflow-y-auto max-h-[calc(100vh-210px)] lg:max-h-[calc(100vh-160px)]">
+        <main id="dashboard-content" tabIndex="-1" className="dash-content-card flex-grow glass-premium-dark rounded-[24px] p-4 sm:p-8 overflow-y-auto max-h-none lg:max-h-[calc(100vh-160px)]">
           {children}
         </main>
       </div>

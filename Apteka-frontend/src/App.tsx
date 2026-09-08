@@ -53,6 +53,9 @@ export default function App() {
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [adminStats, setAdminStats] = useState<any>(null);
   const [loadingAdminData, setLoadingAdminData] = useState(false);
+  const [adminUserSearch, setAdminUserSearch] = useState('');
+  const [adminRoleFilter, setAdminRoleFilter] = useState('TOUS');
+  const [adminStatusFilter, setAdminStatusFilter] = useState('TOUS');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -284,7 +287,12 @@ export default function App() {
             </div>
           ) : (
             <div className="bg-white/50 backdrop-blur-md border border-slate-200/50 rounded-3xl shadow-sm overflow-hidden">
-              <table className="w-full text-left text-sm">
+              <div className="flex flex-col gap-3 border-b border-slate-200/50 p-4 sm:flex-row">
+                <input value={adminUserSearch} onChange={e => setAdminUserSearch(e.target.value)} placeholder="Rechercher par nom ou email…" className="flex-1 rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-800 outline-none focus:border-emerald-400" />
+                <select value={adminRoleFilter} onChange={e => setAdminRoleFilter(e.target.value)} className="rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-800"><option value="TOUS">Tous les rôles</option><option value="PATIENT">Patients</option><option value="MEDECIN">Médecins</option><option value="PHARMACIEN">Pharmaciens</option><option value="ADMINISTRATEUR">Administrateurs</option></select>
+                <select value={adminStatusFilter} onChange={e => setAdminStatusFilter(e.target.value)} className="rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-800"><option value="TOUS">Tous les statuts</option><option value="ACTIVE">Actifs</option><option value="PENDING">En attente</option><option value="BLOCKED">Bloqués</option></select>
+              </div>
+              <div className="overflow-x-auto"><table className="min-w-[760px] w-full text-left text-sm">
                 <thead>
                   <tr className="uppercase text-[11px] font-bold text-slate-450 tracking-wider">
                     <th className="p-5">Professionnel</th>
@@ -335,7 +343,7 @@ export default function App() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           )}
         </div>
@@ -368,7 +376,10 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/40">
-                  {allUsers.map(u => (
+                  {allUsers.filter(u => {
+                    const haystack = `${u.firstName || ''} ${u.lastName || ''} ${u.email || ''}`.toLowerCase();
+                    return haystack.includes(adminUserSearch.toLowerCase()) && (adminRoleFilter === 'TOUS' || u.role === adminRoleFilter) && (adminStatusFilter === 'TOUS' || u.status === adminStatusFilter);
+                  }).map(u => (
                     <tr key={u.id} className="hover:bg-white/5">
                       <td className="p-5 flex flex-col text-left">
                         <span className="font-bold text-slate-850 text-base">{u.firstName} {u.lastName}</span>
