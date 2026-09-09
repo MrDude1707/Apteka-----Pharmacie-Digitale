@@ -1063,7 +1063,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
       {cart.length > 0 && !showCheckout && (
         <button
           onClick={() => setShowCheckout(true)}
-          className="fixed bottom-10 right-10 bg-white text-black hover:bg-[#00f0ff] px-8 py-5 rounded-[100px] shadow-[0_20px_40px_rgba(0,0,0,0.5)] font-bold flex items-center gap-3 hover:scale-105 transition-all z-[150] cursor-none"
+          className="fixed bottom-4 right-4 sm:bottom-10 sm:right-10 bg-white text-black hover:bg-[#00f0ff] px-5 py-3 sm:px-8 sm:py-5 rounded-[100px] shadow-[0_20px_40px_rgba(0,0,0,0.5)] text-sm sm:text-base font-bold flex items-center gap-2 sm:gap-3 hover:scale-105 transition-all z-[150] cursor-none"
           data-cursor-magnet
         >
           <ShoppingCart size={22}/> Panier d'achat ({cart.length})
@@ -1073,7 +1073,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
       {/* SHOPPING CART / CHECKOUT MODAL */}
       {showCheckout && (
         <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-xl z-[2000] flex items-center justify-center p-4">
-          <div className="glass-premium-dark p-10 rounded-[40px] max-w-xl w-full relative shadow-2xl animate-in zoom-in duration-300">
+          <div className="glass-premium-dark max-h-[calc(100dvh-2rem)] overflow-y-auto p-5 sm:p-10 rounded-[28px] sm:rounded-[40px] max-w-xl w-full relative shadow-2xl animate-in zoom-in duration-300">
             <button
               onClick={() => setShowCheckout(false)}
               className="absolute top-8 right-8 p-3 bg-white/5 hover:bg-white/10 rounded-full cursor-none transition-colors text-white/50 hover:text-white"

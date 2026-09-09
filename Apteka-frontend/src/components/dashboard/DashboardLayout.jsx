@@ -82,6 +82,10 @@ export default function DashboardLayout({
 
   // Trigger GSAP stagger animation on first render of the dashboard layout
   useGSAP(() => {
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const mobileViewport = window.matchMedia?.('(max-width: 767px), (pointer: coarse)').matches;
+    if (reduceMotion || mobileViewport) return;
+
     gsap.fromTo('.dash-sidebar', 
       { opacity: 0, x: -50 }, 
       { opacity: 1, x: 0, duration: 1.2, ease: 'expo.out' }
@@ -95,6 +99,10 @@ export default function DashboardLayout({
 
   // Trigger content-card animation only when the active tab changes
   useGSAP(() => {
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const mobileViewport = window.matchMedia?.('(max-width: 767px), (pointer: coarse)').matches;
+    if (reduceMotion || mobileViewport) return;
+
     gsap.fromTo('.dash-content-card', 
       { opacity: 0, scale: 0.98, y: 30 }, 
       { opacity: 1, scale: 1, y: 0, duration: 1, ease: 'expo.out' }
@@ -102,10 +110,10 @@ export default function DashboardLayout({
   }, { scope: containerRef, dependencies: [activeTab] });
 
   return (
-    <div ref={containerRef} className="dashboard-root min-h-screen bg-[#050505] text-zinc-100 font-sans flex relative overflow-hidden antialiased pt-16 xl:pt-10 motion-safe:transition-colors">
+    <div ref={containerRef} className="dashboard-root min-h-[100svh] bg-[#050505] text-zinc-100 font-sans flex relative overflow-x-hidden antialiased pt-16 xl:pt-10 motion-safe:transition-colors">
       
       {/* WebGL Lusion-style Fluid Background */}
-      <WebGLBackground />
+      <div className="hidden lg:block"><WebGLBackground /></div>
       
       {/* Custom Physics Cursor */}
       <JellyCursor />
@@ -167,10 +175,10 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Panel */}
-      <div className="flex-grow flex flex-col min-w-0 p-6 relative z-10 gap-6">
+      <div className="flex-grow flex flex-col min-w-0 p-3 sm:p-6 relative z-10 gap-4 sm:gap-6">
         
         {/* Top Header bar */}
-        <header className="dash-header flex items-end justify-between glass-premium-dark px-6 py-4 rounded-[100px]">
+        <header className="dash-header flex flex-col items-start gap-3 glass-premium-dark px-4 py-3 rounded-[28px] sm:flex-row sm:items-end sm:justify-between sm:px-6 sm:py-4 sm:rounded-[100px]">
           {/* Page title / Tab Indicator */}
           <div>
             <p className="text-[0.85rem] font-semibold text-[#00f0ff] uppercase tracking-[2px] mb-1">
@@ -182,8 +190,8 @@ export default function DashboardLayout({
           </div>
 
           {/* Quick Stats/Notification Icons */}
-          <div className="flex items-center gap-3">
-            <div className="px-5 py-2.5 bg-white/5 border border-white/10 rounded-full text-xs font-semibold tracking-wider text-white" data-cursor-magnet>
+          <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-start">
+            <div className="hidden px-5 py-2.5 bg-white/5 border border-white/10 rounded-full text-xs font-semibold tracking-wider text-white sm:block" data-cursor-magnet>
               {todayLabel}
             </div>
             <button type="button" onClick={() => { setHasNotification(false); setNotificationOpen(current => !current); }} className="relative p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/50 hover:text-[#00f0ff] transition-colors" data-cursor-magnet aria-label="Ouvrir les notifications" aria-expanded={notificationOpen}>

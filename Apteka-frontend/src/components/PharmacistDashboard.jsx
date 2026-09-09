@@ -409,7 +409,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
           {/* Module de vérification des stocks et validation de la délivrance */}
           {foundOrdonnance && (
             <div className="xl:col-span-5 flex flex-col gap-6 animate-in fade-in duration-300">
-              <div className="p-8 rounded-[24px] glass-premium-dark shadow-sm flex flex-col gap-6 sticky top-24">
+              <div className="p-5 sm:p-8 rounded-[24px] glass-premium-dark shadow-sm flex flex-col gap-6 xl:sticky xl:top-24">
                 <div className="border-b border-white/10 pb-4 flex justify-between items-center">
                   <h4 className="text-xs font-black text-white/40 uppercase tracking-widest">Contrôle Inventaire</h4>
                   <span className="text-[9px] font-black text-[#00f0ff] bg-[#00f0ff]/10 border border-[#00f0ff]/20 px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1.5 animate-pulse">
@@ -715,7 +715,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
           </div>
 
           {/* Formulaire de réapprovisionnement */}
-          <div className="xl:col-span-4 p-8 rounded-[32px] glass-premium-dark flex flex-col gap-6 sticky top-24">
+          <div className="xl:col-span-4 p-5 sm:p-8 rounded-[32px] glass-premium-dark flex flex-col gap-6 xl:sticky xl:top-24">
             <div>
               <h3 className="text-xl font-light text-white tracking-tight">Réapprovisionner</h3>
               <p className="text-xs text-white/50 font-medium mt-2">Incrémentez le stock existant suite à une livraison grossiste :</p>
