@@ -3,6 +3,7 @@ import { Search, ClipboardList, CheckCircle2, AlertTriangle, Package, RefreshCw,
 import { API_URL } from '../config';
 import { notify } from '../utils/notify';
 import DashboardLayout from './dashboard/DashboardLayout';
+import { formatMoney } from '../utils/currency';
 
 export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
   // Search Prescription State
@@ -583,7 +584,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
                       
                       <div className="text-right shrink-0">
                         <span className="text-xs text-white/40 font-bold uppercase tracking-widest block">{dateText}</span>
-                        <span className="text-3xl font-light text-white block mt-2">{cmd.total.toFixed(2)} €</span>
+                        <span className="text-3xl font-light text-white block mt-2">{formatMoney(cmd.total, cmd.currency)}</span>
                       </div>
                     </div>
 
@@ -598,7 +599,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
                               <p className="text-[10px] text-white/50 mt-1 font-black uppercase tracking-widest">Qté : {it.qty || 1}</p>
                             </div>
                             <span className="bg-black/40 px-3 py-1.5 rounded-lg border border-white/5 text-[11px] text-[#00f0ff] font-black shrink-0">
-                              {((it.medicament.prix || 0) * (it.qty || 1)).toFixed(2)} €
+                              {formatMoney((it.medicament.prix || 0) * (it.qty || 1), cmd.currency)}
                             </span>
                           </div>
                         ))}
@@ -697,7 +698,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
                       <tr key={stock.id} className="hover:bg-white/5 transition-colors">
                         <td className="py-5 px-4 font-bold text-white text-base">{stock.medicament.nom}</td>
                         <td className="py-5 px-4 text-white/50 text-[11px] font-bold uppercase tracking-wider">{stock.medicament.substanceActive || "N/A"}</td>
-                        <td className="py-5 px-4 text-[#00f0ff] font-light text-lg">{stock.medicament.prix ? `${stock.medicament.prix.toFixed(2)} €` : "N/A"}</td>
+                        <td className="py-5 px-4 text-[#00f0ff] font-light text-lg">{stock.medicament.prix ? formatMoney(stock.medicament.prix, stock.medicament.currency) : "N/A"}</td>
                         <td className="py-5 px-4 text-center">
                           <span className={`inline-block font-black px-4 py-2 rounded-xl text-xs ${
                             stock.quantite > 50 ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'

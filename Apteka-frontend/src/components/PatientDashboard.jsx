@@ -7,6 +7,7 @@ import { notify } from '../utils/notify';
 import MapRoute from './MapRoute';
 import DashboardLayout from './dashboard/DashboardLayout';
 import PrescriptionOrderPicker from './PrescriptionOrderPicker';
+import { formatMoney } from '../utils/currency';
 
 export default function PatientDashboard({ user, activeTab, setActiveTab }) {
   // Autocomplete & Search State
@@ -513,12 +514,12 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                 </h4>
                 <div className="flex flex-wrap gap-3">
                   {[
-                    { name: "Doliprane", label: "Doliprane 1000 mg", price: "2.10 €" },
-                    { name: "Paracétamol", label: "Paracétamol Biogaran", price: "1.95 €" },
-                    { name: "Spasfon", label: "Spasfon 80 mg", price: "3.50 €" },
-                    { name: "Ibuprofène", label: "Ibuprofène Biogaran", price: "2.50 €" },
-                    { name: "Smecta", label: "Smecta 3 g", price: "4.50 €" },
-                    { name: "Maalox", label: "Maalox suspension", price: "4.80 €" }
+                    { name: "Doliprane", label: "Doliprane 1000 mg", price: "10 400 MGA" },
+                    { name: "Paracétamol", label: "Paracétamol Biogaran", price: "9 700 MGA" },
+                    { name: "Spasfon", label: "Spasfon 80 mg", price: "17 300 MGA" },
+                    { name: "Ibuprofène", label: "Ibuprofène Biogaran", price: "12 400 MGA" },
+                    { name: "Smecta", label: "Smecta 3 g", price: "22 300 MGA" },
+                    { name: "Maalox", label: "Maalox suspension", price: "23 800 MGA" }
                   ].map(med => (
                     <button
                       key={med.name}
@@ -579,7 +580,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                           </div>
                           
                           <div className="flex flex-col items-end gap-2 shrink-0">
-                            <span className="text-lg font-light text-white">{(med.prix || 0).toFixed(2)} €</span>
+                            <span className="text-lg font-light text-white">{formatMoney(med.prix, med.currency)}</span>
                             <button
                               onClick={() => {
                                 const stockForMed = searchStocks.find(s => s.medicamentId === med.id);
@@ -616,7 +617,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                       </p>
 
                       <div className="flex justify-between items-center mt-2 border-t border-white/10 pt-4">
-                        <b className="text-[#00f0ff] text-xl font-light">{(stock.medicament.prix || 0).toFixed(2)} €</b>
+                        <b className="text-[#00f0ff] text-xl font-light">{formatMoney(stock.medicament.prix, stock.medicament.currency)}</b>
                         <button
                           onClick={() => {
                             if (addToCart(stock)) notify("Produit ajouté au panier !", 'success');
@@ -870,7 +871,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                       </div>
                       
                       <div className="flex flex-col items-end gap-2 self-end sm:self-start shrink-0">
-                        <span className="text-2xl font-light text-white">{(cmd.total || 0).toFixed(2)} €</span>
+                        <span className="text-2xl font-light text-white">{formatMoney(cmd.total, cmd.currency)}</span>
                         <span className="text-[9px] font-black px-3 py-1.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase tracking-widest flex items-center gap-1.5">
                           {isPaid ? 'Paiement confirmé' : cmd.status === 'RESERVEE' ? 'À payer en officine' : cmd.status === 'ANNULEE' ? 'Annulée' : 'Paiement en attente'}
                         </span>
@@ -889,7 +890,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                             <p className="font-bold text-white truncate">{it.medicament.nom}</p>
                             <p className="text-[10px] text-white/50 mt-1 uppercase tracking-widest truncate">Quantité : {it.qty || 1} boîte(s)</p>
                           </div>
-                          <span className="text-[#00f0ff] font-bold shrink-0">{((it.medicament.prix || 0) * (it.qty || 1)).toFixed(2)} €</span>
+                          <span className="text-[#00f0ff] font-bold shrink-0">{formatMoney((it.medicament.prix || 0) * (it.qty || 1), cmd.currency)}</span>
                         </div>
                       ))}
                     </div>
@@ -1139,7 +1140,7 @@ export default function PatientDashboard({ user, activeTab, setActiveTab }) {
                 <div className="border-t border-white/10 pt-6 flex justify-between items-center">
                   <span className="text-sm font-black text-white/50 uppercase tracking-widest">Montant Total Estimé</span>
                   <span className="text-3xl text-white font-light tracking-tight">
-                    {cart.reduce((acc, c) => acc + (c.medicament.prix || 0) * (c.qty || 1), 0).toFixed(2)} €
+                    {formatMoney(cart.reduce((acc, c) => acc + (c.medicament.prix || 0) * (c.qty || 1), 0), cart[0]?.medicament.currency)}
                   </span>
                 </div>
 
