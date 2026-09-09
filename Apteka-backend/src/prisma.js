@@ -13,9 +13,11 @@ if (hasDb) {
     console.log("Prisma Client connecté à la base de données PostgreSQL (Supabase).");
   } catch (error) {
     console.error("Erreur d'initialisation de Prisma Client, bascule en mode Démo simulé:", error.message);
+    if (process.env.NODE_ENV === 'production') throw error;
     isFallback = true;
   }
 } else {
+  if (process.env.NODE_ENV === 'production') throw new Error('DATABASE_URL requise en production.');
   console.warn("⚠️ DATABASE_URL non configurée. Mode DEMO activé.");
   isFallback = true;
 }
@@ -28,7 +30,8 @@ const medicamentsData = JSON.parse(fs.readFileSync(path.join(__dirname, '../data
 const mockMedicaments = medicamentsData.map((med, idx) => ({
   id: `med-${idx + 1}`, cis: med.cis, nom: med.nom, forme: med.forme, presentation: med.presentation || "",
   prix: med.prix_euros ? parseFloat(med.prix_euros.replace(',', '.')) : 5.5, tauxRemboursement: med.taux_remboursement || "30%",
-  substanceActive: med.substances_actives?.[0]?.substance || "Aucune", categorie: med.categorie || "Général", isPopular: med.isPopular || false
+  substanceActive: med.substances_actives?.[0]?.substance || "Aucune", categorie: med.categorie || "Général", isPopular: med.isPopular || false,
+  isActive: true, requiresPrescription: true, classificationReviewed: false
 }));
 
 const mockPharmacies = pharmaciesData.map(p => ({
@@ -60,164 +63,13 @@ mockProfiles.push(
 );
 
 mockMedecinsDispos.push(
-  { id: 'vitrine-1', nom: 'Dr. Jean Razafy', specialite: 'Médecine générale', photoUrl: '/images/medecins/medecin-1.jpg', userId: 'usr-doctor' },
+  { id: 'vitrine-1', nom: 'Dr. Jean Razafy', specialite: 'Médecine générale', photoUrl: '/images/medecins/medecin-1.jpg', userId: 'usr-doctor', actif: true },
   { id: 'vitrine-2', nom: 'Dr. Voahangy Rakoto', specialite: 'Pédiatrie' }
 );
 
-const fallbackClient = {
-  isFallback: true,
-  user: {
-    findUnique: async ({ where }) => {
-      const u = mockUsers.find(user => user.email === where.email || user.id === where.id);
-      if (!u) return null;
-      return { ...u, profile: mockProfiles.find(p => p.userId === u.id) };
-    },
-    findMany: async ({ where }) => {
-      let res = mockUsers;
-      if (where && where.profile && where.profile.role) {
-        const matchingProfiles = mockProfiles.filter(p => p.role === where.profile.role);
-        res = mockUsers.filter(u => matchingProfiles.some(p => p.userId === u.id));
-      }
-      return res.map(u => ({ ...u, profile: mockProfiles.find(p => p.userId === u.id) }));
-    },
-    create: async ({ data }) => {
-      const newUser = { id: data.id || `usr-${Date.now()}`, email: data.email, password: data.password, createdAt: new Date() };
-      mockUsers.push(newUser);
-      if (data.profile?.create) mockProfiles.push({ id: `prof-${Date.now()}`, userId: newUser.id, ...data.profile.create });
-      return { ...newUser, profile: mockProfiles.find(p => p.userId === newUser.id) };
-    },
-    update: async ({ where, data }) => {
-      const idx = mockUsers.findIndex(u => u.id === where.id);
-      if (idx !== -1) mockUsers[idx] = { ...mockUsers[idx], ...data };
-      return mockUsers[idx];
-    }
-  },
-  profile: {
-    findUnique: async ({ where }) => mockProfiles.find(p => p.userId === where.userId),
-    findMany: async ({ where }) => mockProfiles.filter(p => (!where?.role || p.role === where.role) && (!where?.status || p.status === where.status) && (!where?.medecinChoisiId || p.medecinChoisiId === where.medecinChoisiId)),
-    count: async ({ where } = {}) => {
-      if (!where) return mockProfiles.length;
-      let res = mockProfiles;
-      if (where.role) {
-        if (where.role.in) res = res.filter(p => where.role.in.includes(p.role));
-        else res = res.filter(p => p.role === where.role);
-      }
-      if (where.status) res = res.filter(p => p.status === where.status);
-      return res.length;
-    },
-    update: async ({ where, data }) => {
-      const idx = mockProfiles.findIndex(p => p.id === where.id || p.userId === where.userId);
-      if (idx !== -1) mockProfiles[idx] = { ...mockProfiles[idx], ...data };
-      return mockProfiles[idx];
-    }
-  },
-  medecinDisponible: {
-    findMany: async () => mockMedecinsDispos.map(md => ({...md, user: mockUsers.find(u=>u.id === md.userId)})),
-    findUnique: async ({ where }) => mockMedecinsDispos.find(m => m.id === where.id || m.userId === where.userId),
-    update: async ({ where, data }) => {
-      const idx = mockMedecinsDispos.findIndex(m => m.id === where.id);
-      if (idx !== -1) mockMedecinsDispos[idx] = { ...mockMedecinsDispos[idx], ...data };
-      return mockMedecinsDispos[idx];
-    }
-  },
-  pharmacie: {
-    findMany: async () => mockPharmacies,
-    findUnique: async ({ where }) => mockPharmacies.find(p => p.id === where.id),
-    count: async () => mockPharmacies.length
-  },
-  medicament: {
-    findMany: async ({ where, take, skip }) => {
-      let res = mockMedicaments;
-      if (where?.OR) {
-        const searchVal = where.OR[0].nom.contains.toLowerCase();
-        res = res.filter(m => 
-          m.nom.toLowerCase().includes(searchVal) || 
-          m.substanceActive.toLowerCase().includes(searchVal)
-        );
-      } else if (where?.nom?.contains) {
-        res = res.filter(m => m.nom.toLowerCase().includes(where.nom.contains.toLowerCase()));
-      }
-      if (skip) res = res.slice(skip);
-      if (take) res = res.slice(0, take);
-      return res;
-    },
-    count: async ({ where } = {}) => {
-      let res = mockMedicaments;
-      if (where?.OR) {
-        const searchVal = where.OR[0].nom.contains.toLowerCase();
-        res = res.filter(m => 
-          m.nom.toLowerCase().includes(searchVal) || 
-          m.substanceActive.toLowerCase().includes(searchVal)
-        );
-      } else if (where?.nom?.contains) {
-        res = res.filter(m => m.nom.toLowerCase().includes(where.nom.contains.toLowerCase()));
-      }
-      return res.length;
-    },
-    findUnique: async ({ where }) => mockMedicaments.find(m => m.id === where.id || m.cis === where.cis)
-  },
-  stock: {
-    findMany: async ({ where, include }) => {
-      let results = mockStocks.filter(s => (!where?.medicamentId || s.medicamentId === where.medicamentId) && (!where?.pharmacieId || s.pharmacieId === where.pharmacieId) && (!where?.quantite?.gt || s.quantite > 0));
-      return results.map(s => ({ ...s, pharmacie: mockPharmacies.find(p => p.id === s.pharmacieId), medicament: mockMedicaments.find(m => m.id === s.medicamentId) }));
-    },
-    update: async ({ where, data }) => {
-      const idx = mockStocks.findIndex(s => s.id === where.id);
-      if (idx !== -1) {
-        if (data.quantite?.decrement) mockStocks[idx].quantite = Math.max(0, mockStocks[idx].quantite - data.quantite.decrement);
-        else mockStocks[idx].quantite = data.quantite;
-        return mockStocks[idx];
-      }
-    }
-  },
-  ordonnance: {
-    create: async ({ data }) => {
-      const newOrd = { id: `ord-${Date.now()}`, ...data, dateEmission: new Date() };
-      mockOrdonnances.push(newOrd);
-      return newOrd;
-    },
-    findUnique: async ({ where }) => {
-      const ord = mockOrdonnances.find(o => o.id === where.id || o.code === where.code);
-      if(!ord) return null;
-      return {...ord, medecin: mockUsers.find(u=>u.id===ord.medecinId), patient: mockUsers.find(u=>u.id===ord.patientId)};
-    },
-    findMany: async ({ where }) => mockOrdonnances.filter(o => (!where?.patientId || o.patientId === where.patientId) && (!where?.medecinId || o.medecinId === where.medecinId) && (!where?.status || o.status === where.status)),
-    count: async ({ where } = {}) => {
-      if (!where) return mockOrdonnances.length;
-      let res = mockOrdonnances;
-      if (where.status) res = res.filter(o => o.status === where.status);
-      return res.length;
-    },
-    update: async ({ where, data }) => {
-      const idx = mockOrdonnances.findIndex(o => o.id === where.id);
-      if (idx !== -1) mockOrdonnances[idx] = { ...mockOrdonnances[idx], ...data };
-      return mockOrdonnances[idx];
-    }
-  },
-  message: {
-    findMany: async ({ where }) => mockMessages.filter(m => 
-      (m.senderId === where.OR[0].senderId && m.receiverId === where.OR[0].receiverId) ||
-      (m.senderId === where.OR[1].senderId && m.receiverId === where.OR[1].receiverId)
-    ).sort((a,b) => a.createdAt - b.createdAt),
-    create: async ({ data }) => {
-      const newMsg = { id: `msg-${Date.now()}`, ...data, createdAt: new Date() };
-      mockMessages.push(newMsg);
-      return newMsg;
-    }
-  },
-  commande: {
-    create: async ({ data }) => {
-      const newCmd = { id: `cmd-${Date.now()}`, ...data, createdAt: new Date() };
-      mockCommandes.push(newCmd);
-      return newCmd;
-    }
-  },
-  otpCode: {
-    create: async ({ data }) => { const newOtp = { id: `otp-${Date.now()}`, ...data, createdAt: new Date() }; mockOtps.push(newOtp); return newOtp; },
-    findFirst: async ({ where }) => mockOtps.find(o => o.userId === where.userId && o.code === where.code),
-    deleteMany: async ({ where }) => { mockOtps = mockOtps.filter(o => o.userId !== where?.userId); }
-  },
-  $transaction: async (promises) => Promise.all(promises)
-};
-
-module.exports = isFallback ? fallbackClient : prisma;
+const { createMemoryPrisma } = require('./memoryPrisma');
+module.exports = isFallback ? createMemoryPrisma({
+  user: mockUsers, profile: mockProfiles, medecinDisponible: mockMedecinsDispos,
+  pharmacie: mockPharmacies, medicament: mockMedicaments, stock: mockStocks,
+  ordonnance: mockOrdonnances, commande: mockCommandes, message: mockMessages, otpCode: mockOtps
+}) : prisma;

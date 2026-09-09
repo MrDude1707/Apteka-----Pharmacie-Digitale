@@ -1,4 +1,6 @@
 const prisma = require('../prisma');
+const { createCareWorkflows, respondError, expired } = require('../services/careWorkflows');
+const care = createCareWorkflows(prisma);
 
 /**
  * Rechercher et lire une ordonnance par son code unique (ex: ORD-4927)
@@ -12,11 +14,14 @@ async function getOrdonnanceByCode(req, res) {
     }
 
     const ordonnance = await prisma.ordonnance.findUnique({
-      where: { code }
+      where: { code }, include: { commande: { select: { id: true, status: true, pharmacieId: true } } }
     });
 
     if (!ordonnance) {
       return res.status(404).json({ error: "Ordonnance introuvable. Veuillez vérifier le code saisi." });
+    }
+    if (!req.user.profile.pharmacieId || (ordonnance.pharmacieId && ordonnance.pharmacieId !== req.user.profile.pharmacieId)) {
+      return res.status(403).json({ error: 'Cette ordonnance est rattachée à une autre pharmacie ou votre rattachement est manquant.' });
     }
 
     // Récupérer le médecin et le patient liés
@@ -33,7 +38,9 @@ async function getOrdonnanceByCode(req, res) {
     return res.status(200).json({
       id: ordonnance.id,
       code: ordonnance.code,
-      status: ordonnance.status,
+      status: expired(ordonnance) && ordonnance.status === 'PENDING' ? 'EXPIREE' : ordonnance.status,
+      commande: ordonnance.commande,
+      dateExpiration: ordonnance.dateExpiration,
       dateEmission: ordonnance.dateEmission,
       dateDelivrance: ordonnance.dateDelivrance,
       medicaments: ordonnance.medicaments,
@@ -59,125 +66,10 @@ async function getOrdonnanceByCode(req, res) {
  * VALIDER ET DÉLIVRER UNE ORDONNANCE (DÉDUCTION TRANSACTIONNELLE DU STOCK)
  */
 async function deliverOrdonnance(req, res) {
-  const { ordonnanceId } = req.body;
-  const pharmacieId = req.user.profile.pharmacieId; // Pharmacie associée au compte du pharmacien connecté
-
   try {
-    if (!pharmacieId) {
-      return res.status(400).json({ error: "Vous n'êtes actuellement rattaché à aucune pharmacie officielle d'Antananarivo." });
-    }
-
-    // Récupérer l'ordonnance
-    const ordonnance = await prisma.ordonnance.findUnique({
-      where: { id: ordonnanceId }
-    });
-
-    if (!ordonnance) {
-      return res.status(404).json({ error: "Ordonnance introuvable." });
-    }
-
-    if (ordonnance.status === 'DELIVREE') {
-      return res.status(400).json({ error: "Cette ordonnance a déjà été entièrement délivrée." });
-    }
-
-    const emission = new Date(ordonnance.dateEmission);
-    const expiration = new Date(emission);
-    expiration.setFullYear(expiration.getFullYear() + 1);
-    if (Number.isNaN(emission.getTime()) || expiration <= new Date()) {
-      return res.status(409).json({ error: "Cette ordonnance est expirée et ne peut plus être délivrée." });
-    }
-    if (ordonnance.pharmacieId && ordonnance.pharmacieId !== pharmacieId) {
-      return res.status(409).json({ error: "Cette ordonnance est déjà rattachée à une autre pharmacie." });
-    }
-
-    let prescritMedicaments;
-    try {
-      prescritMedicaments = typeof ordonnance.medicaments === 'string' 
-        ? JSON.parse(ordonnance.medicaments) 
-        : ordonnance.medicaments;
-    } catch (parseError) {
-      console.error("Erreur de formatage ou parsing des médicaments de l'ordonnance:", parseError);
-      return res.status(500).json({ error: "Les données des médicaments associées à cette ordonnance sont corrompues ou invalides." });
-    }
-
-    // Étape 1 : Vérifier la disponibilité de TOUS les stocks dans la pharmacie du pharmacien
-    const stocksToUpdate = [];
-    const missingStockItems = [];
-
-    for (const item of prescritMedicaments) {
-      // Trouver la ligne de stock correspondante
-      const stock = await prisma.stock.findFirst({
-        where: {
-          pharmacieId: pharmacieId,
-          medicamentId: item.medicamentId
-        },
-        include: { medicament: true }
-      });
-
-      if (!stock || stock.quantite < item.quantite) {
-        const available = stock ? stock.quantite : 0;
-        const medName = stock ? stock.medicament.nom : (item.nom || "Médicament inconnu");
-        missingStockItems.push({
-          medicamentId: item.medicamentId,
-          nom: medName,
-          requis: item.quantite,
-          disponible: available
-        });
-      } else {
-        stocksToUpdate.push({
-          stockId: stock.id,
-          medicamentId: item.medicamentId,
-          nouveauStock: stock.quantite - item.quantite,
-          quantitePrescrite: item.quantite
-        });
-      }
-    }
-
-    // S'il y a des ruptures de stock, annuler l'opération globale
-    if (missingStockItems.length > 0) {
-      return res.status(400).json({
-        error: "Impossible de délivrer l'ordonnance : stock insuffisant pour certains produits dans votre officine.",
-        details: missingStockItems
-      });
-    }
-
-    // Étape 2 : Exécuter la transaction Prisma de déduction des stocks et de marquage de l'ordonnance
-    const txOperations = [];
-
-    // Déduire chaque stock
-    stocksToUpdate.forEach(item => {
-      txOperations.push(
-        prisma.stock.update({
-          where: { id: item.stockId },
-          data: { quantite: item.nouveauStock }
-        })
-      );
-    });
-
-    // Marquer l'ordonnance comme délivrée
-    txOperations.push(
-      prisma.ordonnance.update({
-        where: { id: ordonnanceId },
-        data: {
-          status: 'DELIVREE',
-          dateDelivrance: new Date(),
-          pharmacieId: pharmacieId
-        }
-      })
-    );
-
-    // Lancer la transaction atomique (si l'une échoue, tout échoue)
-    await prisma.$transaction(txOperations);
-
-    return res.status(200).json({
-      message: "Ordonnance délivrée avec succès ! Les stocks de votre pharmacie ont été débités en temps réel de manière transactionnelle.",
-      ordonnanceStatus: "DELIVREE"
-    });
-
-  } catch (error) {
-    console.error("Erreur lors de la transaction de délivrance:", error);
-    return res.status(500).json({ error: "Une erreur critique est survenue lors de la délivrance et de la déduction des stocks." });
-  }
+    const ordonnance = await care.dispense(req.user.profile.pharmacieId, req.body.ordonnanceId);
+    return res.json({ message: 'Délivrance enregistrée. Stock confirmé sans double débit.', ordonnanceStatus: ordonnance.status, ordonnance });
+  } catch (error) { return respondError(res, error); }
 }
 
 /**
@@ -228,7 +120,7 @@ async function updateStock(req, res) {
     if (stock) {
       updatedStock = await prisma.stock.update({
         where: { id: stock.id },
-        data: { quantite: stock.quantite + quantiteAjoutee }
+        data: { quantite: { increment: quantiteAjoutee } }
       });
     } else {
       // Si la ligne n'existait pas, la créer
@@ -269,6 +161,7 @@ async function getMyPharmacyCommandes(req, res) {
         status: { not: "EN_ATTENTE_DE_PAIEMENT" } // Exclure les sessions de paiement en cours non validées
       },
       include: {
+        ordonnance: { select: { code: true, status: true, dateDelivrance: true } },
         patient: {
           select: {
             id: true,
@@ -289,11 +182,13 @@ async function getMyPharmacyCommandes(req, res) {
 
     const now = Date.now();
     await Promise.all(commandes.map(async commande => {
-      const elapsedSeconds = (now - new Date(commande.createdAt).getTime()) / 1000;
+      if (commande.ordonnanceId && commande.ordonnance?.status !== 'DELIVREE') return;
+      const start = Math.max(new Date(commande.paidAt || commande.createdAt).getTime(), new Date(commande.ordonnance?.dateDelivrance || 0).getTime());
+      const elapsedSeconds = (now - start) / 1000;
       const nextStatus = elapsedSeconds >= 600 ? 'LIVREE' : elapsedSeconds >= 180 && commande.status === 'PAYEE' ? 'EN_ROUTE' : commande.status;
       if (nextStatus !== commande.status && ['PAYEE', 'EN_ROUTE'].includes(commande.status)) {
-        commande.status = nextStatus;
-        await prisma.commande.update({ where: { id: commande.id }, data: { status: nextStatus } });
+        await prisma.commande.updateMany({ where: { id: commande.id, status: commande.status }, data: { status: nextStatus } });
+        commande.status = (await prisma.commande.findUnique({ where: { id: commande.id } })).status;
       }
     }));
 
@@ -308,54 +203,29 @@ async function getMyPharmacyCommandes(req, res) {
  * METTRE À JOUR LE STATUT DE LIVRAISON / TRAITEMENT D'UNE COMMANDE (ex: PAYEE -> EN_ROUTE -> LIVREE)
  */
 async function updateCommandeStatus(req, res) {
-  const { id } = req.params;
-  const { status } = req.body;
-  const pharmacieId = req.user.profile.pharmacieId;
-  const allowedTransitions = {
-    PAYEE: ['EN_ROUTE'],
-    EN_ROUTE: ['LIVREE'],
-    LIVREE: []
-  };
-
   try {
-    if (!pharmacieId) {
-      return res.status(400).json({ error: "Aucune pharmacie rattachée à votre profil." });
-    }
-
-    if (!id || !status) {
-      return res.status(400).json({ error: "L'ID de la commande et le nouveau statut sont requis." });
-    }
-
-    if (!Object.prototype.hasOwnProperty.call(allowedTransitions, status)) {
-      return res.status(400).json({ error: "Statut de commande invalide." });
-    }
-
-    // Vérifier que la commande appartient à la pharmacie du pharmacien
-    const commande = await prisma.commande.findUnique({
-      where: { id }
+    const pharmacieId = req.user.profile.pharmacieId;
+    const transitions = { RESERVEE: ['PAYEE'], PAYEE: ['EN_ROUTE'], EN_ROUTE: ['LIVREE'] };
+    const updated = await care.transaction(async tx => {
+      const cmd = await tx.commande.findUnique({ where: { id: req.params.id }, include: { ordonnance: true } });
+      if (!pharmacieId || !cmd || cmd.pharmacieId !== pharmacieId) {
+        const error = new Error('Commande extérieure à votre pharmacie.'); error.status = 403; throw error;
+      }
+      if (!transitions[cmd.status]?.includes(req.body.status)) {
+        const error = new Error('Transition de commande impossible.'); error.status = 409; throw error;
+      }
+      if (req.body.status === 'PAYEE' && !cmd.stockReserved) {
+        const error = new Error('Rapprochez le stock de cette ancienne commande avant paiement.'); error.status = 409; throw error;
+      }
+      if (req.body.status === 'EN_ROUTE' && cmd.ordonnanceId && cmd.ordonnance?.status !== 'DELIVREE') {
+        const error = new Error('Validez la délivrance de l’ordonnance avant l’expédition.'); error.status = 409; throw error;
+      }
+      return tx.commande.update({ where: { id: cmd.id }, data: { status: req.body.status, ...(req.body.status === 'PAYEE' ? { paidAt: new Date() } : {}) } });
     });
-
-    if (!commande || commande.pharmacieId !== pharmacieId) {
-      return res.status(403).json({ error: "Vous n'êtes pas autorisé à modifier cette commande." });
-    }
-
-    if (!allowedTransitions[commande.status].includes(status)) {
-      return res.status(409).json({ error: `Transition impossible : ${commande.status} vers ${status}.` });
-    }
-
-    const updatedCommande = await prisma.commande.update({
-      where: { id },
-      data: { status }
-    });
-
-    return res.status(200).json({
-      message: `Statut de la commande mis à jour avec succès : ${status}`,
-      commande: updatedCommande
-    });
-
+    return res.json({ message: 'Statut enregistré.', commande: updated });
   } catch (error) {
-    console.error("Erreur de mise à jour du statut de la commande :", error);
-    return res.status(500).json({ error: "Erreur lors de la modification du statut de la commande." });
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    return respondError(res, error);
   }
 }
 

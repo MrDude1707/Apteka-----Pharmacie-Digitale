@@ -16,6 +16,7 @@ router.get('/mes-patients', medecinController.getMyPatients);
 // NOUVELLES ROUTES (RENOUVELLEMENT ET CHAT)
 router.get('/renewals', medecinController.getRenewals);
 router.post('/ordonnances/:id/approve-renewal', medecinController.approveRenewal);
+router.post('/ordonnances/:id/reject-renewal', medecinController.rejectRenewal);
 router.get('/messages/:patientId', medecinController.getMessagesWithPatient);
 router.post('/messages', medecinController.sendMessage);
 

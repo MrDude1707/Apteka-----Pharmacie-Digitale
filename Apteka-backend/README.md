@@ -17,6 +17,8 @@ Le `.env` est déjà rempli avec tes identifiants Supabase. Vérifie/complète s
 
 ## Base de données (si pas encore fait)
 
+Attention : le seed peut réinitialiser les données en mode CLEAN. Ce n’est pas un outil de migration ; ne pas l’utiliser pour mettre à jour une base de production.
+
 ```bash
 npm run prisma:migrate   # crée les tables (1re fois)
 npm run prisma:seed      # remplit avec les données de test + référentiel pharmacies/médicaments
@@ -38,4 +40,5 @@ Vérifie que ça tourne : `http://localhost:3001/api/health`
 - Build command : `npm install`
 - Start command : `npm start`
 - Variables d'environnement à définir sur l'hébergeur : les mêmes que le `.env`, avec `NODE_ENV=production` et `APP_URL` pointant vers le vrai domaine du frontend déployé.
-- Après déploiement, lance `npm run prisma:migrate:deploy` (pas `prisma:migrate`, qui est interactif).
+- Après sauvegarde et validation sur une base de test, appliquer `npm run prisma:migrate:deploy` **avant de démarrer la nouvelle version** (pas `prisma:migrate`, qui est interactif).
+- Pour les nouveaux rôles, renouvellements et commandes liés aux ordonnances : suivre [la procédure de validation et migration](../PRIORITES_METIER_VALIDATION.md). Le catalogue existant doit être classé à partir de références validées avant commande.

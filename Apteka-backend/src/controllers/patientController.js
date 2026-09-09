@@ -1,11 +1,10 @@
 const prisma = require('../prisma');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || 'sk_test_51PxX77Rx7kXy7X7X7Xx7_placeholder');
+const { createCareWorkflows, respondError, expired } = require('../services/careWorkflows');
+const { createCheckoutWorkflows } = require('../services/checkoutWorkflows');
+const care = createCareWorkflows(prisma);
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || 'sk_test_unconfigured');
+const checkout = createCheckoutWorkflows(prisma, stripe);
 
-function validateOrderItems(pharmacieId, items) {
-  return Array.isArray(items)
-    && items.length > 0
-    && items.every(item => item && item.pharmacieId === pharmacieId && Number(item.qty || 1) > 0);
-}
 
 function normalizeSearchText(value = '') {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -46,7 +45,7 @@ function medicationMatches(medicament, query) {
 }
 
 async function getMedicationCatalog(query) {
-  const medicaments = await prisma.medicament.findMany({ orderBy: { nom: 'asc' }, take: 500 });
+  const medicaments = await prisma.medicament.findMany({ where: { isActive: true }, orderBy: { nom: 'asc' } });
   return query ? medicaments.filter(medicament => medicationMatches(medicament, query)) : medicaments;
 }
 
@@ -102,13 +101,14 @@ async function getMyPrescriptions(req, res) {
   try {
     const prescriptions = await prisma.ordonnance.findMany({
       where: { patientId: req.user.id },
+      include: { renewal: true, commande: { select: { id: true, status: true } } },
       orderBy: { dateEmission: 'desc' }
     });
     const populated = [];
     for (const p of prescriptions) {
       const medecin = await prisma.user.findUnique({ where: { id: p.medecinId }, include: { profile: true, medecinDisponible: true } });
       populated.push({ 
-        ...p, 
+        ...p, status: expired(p) && p.status === 'PENDING' ? 'EXPIREE' : p.status,
         medecinName: medecin?.profile ? `Dr. ${medecin.profile.firstName} ${medecin.profile.lastName}` : "Médecin Inconnu",
         medecinSpec: medecin?.medecinDisponible ? medecin.medecinDisponible.specialite : "Généraliste"
       });
@@ -120,35 +120,39 @@ async function getMyPrescriptions(req, res) {
   }
 }
 
-async function requestRenewal(req, res) {
-  const { id } = req.params;
+async function prescriptionPharmacies(req, res) {
   try {
-    const existing = await prisma.ordonnance.findFirst({
-      where: { id, patientId: req.user.id, status: { in: ['PENDING', 'DELIVREE'] }, renouvellementDemande: false }
-    });
-    if (!existing) return res.status(409).json({ error: "Cette ordonnance ne peut pas être renouvelée pour le moment." });
-    const ord = await prisma.ordonnance.update({ where: { id }, data: { renouvellementDemande: true, status: 'RENEWAL_REQUESTED' } });
-    return res.status(200).json({ message: "Demande envoyée avec succès.", ordonnance: ord });
-  } catch(e) {
-    return res.status(500).json({ error: "Erreur demande renouvellement." });
-  }
+    const ord = await prisma.ordonnance.findUnique({ where: { id: req.params.id }, include: { commande: true } });
+    if (!ord || ord.patientId !== req.user.id) return res.status(404).json({ error: 'Ordonnance introuvable.' });
+    if (ord.status !== 'PENDING' || expired(ord) || ord.commande) return res.status(409).json({ error: 'Cette ordonnance ne peut pas être commandée.' });
+    const lines = typeof ord.medicaments === 'string' ? JSON.parse(ord.medicaments) : ord.medicaments;
+    const stocks = await prisma.stock.findMany({ where: { medicamentId: { in: lines.map(l => l.medicamentId) } }, include: { pharmacie: true, medicament: true } });
+    const options = [];
+    for (const pharmacieId of new Set(stocks.map(s => s.pharmacieId))) {
+      const items = lines.map(line => {
+        const stock = stocks.find(s => s.pharmacieId === pharmacieId && s.medicamentId === line.medicamentId);
+        return stock && stock.quantite >= line.quantite && stock.medicament.isActive && stock.medicament.classificationReviewed
+          ? { ...stock, qty: line.quantite } : null;
+      });
+      if (items.every(Boolean)) options.push({ pharmacie: items[0].pharmacie, items });
+    }
+    return res.json(options);
+  } catch (error) { return respondError(res, error); }
 }
 
-// TACHE 5 : COMMANDE / CHECKOUT FAKE
-async function createCommande(req, res) {
-  const { pharmacieId, items, total } = req.body;
+async function requestRenewal(req, res) {
   try {
-    if (!validateOrderItems(pharmacieId, items)) {
-      return res.status(400).json({ error: "Tous les articles doivent provenir de la même pharmacie." });
-    }
+    const renewal = await care.requestRenewal(req.user.id, req.params.id);
+    return res.status(201).json({ message: 'Demande envoyée au médecin.', renewal });
+  } catch (error) { return respondError(res, error); }
+}
 
-    const commande = await prisma.commande.create({
-      data: { patientId: req.user.id, pharmacieId, total, items, status: "PAYEE" }
-    });
-    return res.status(201).json({ message: "Paiement validé avec succès (Simulation).", commande });
-  } catch(e) {
-    return res.status(500).json({ error: "Erreur lors du paiement." });
-  }
+// Retrait en officine : réservation à payer sur place, jamais paiement simulé.
+async function createCommande(req, res) {
+  try {
+    const commande = await care.order(req.user.id, req.body, 'RESERVEE');
+    return res.status(201).json({ message: 'Réservation enregistrée, paiement en officine.', commande });
+  } catch (error) { return respondError(res, error); }
 }
 
 // TACHE 3 : MESSAGERIE
@@ -158,6 +162,7 @@ async function getMessages(req, res) {
     if (!profile || !profile.medecinChoisi || !profile.medecinChoisi.userId) return res.status(200).json({ doctorId: null, messages: [] });
     
     const medecinUserId = profile.medecinChoisi.userId;
+    await care.related(req.user.id, medecinUserId);
     const messages = await prisma.message.findMany({
       where: {
         OR: [
@@ -169,193 +174,64 @@ async function getMessages(req, res) {
     });
     return res.status(200).json({ doctorId: medecinUserId, messages });
   } catch(e) {
-    return res.status(500).json({ error: "Erreur messages." });
+    return respondError(res, e);
   }
 }
 
 async function sendMessage(req, res) {
-  const { receiverId, content } = req.body;
   try {
-    const msg = await prisma.message.create({
-      data: { senderId: req.user.id, receiverId, content }
-    });
+    const msg = await care.sendMessage(req.user.id, req.body.receiverId, req.body.content, 'PATIENT');
     return res.status(201).json(msg);
-  } catch(e) {
-    return res.status(500).json({ error: "Erreur envoi message." });
-  }
+  } catch (error) { return respondError(res, error); }
 }
 
-// STRIPE CHECKOUT & ORDER DELIVERY TRACKING
 async function createCheckoutSession(req, res) {
-  const { pharmacieId, items, total, frontendUrl: customFrontendUrl } = req.body;
-  try {
-    if (!pharmacieId || !validateOrderItems(pharmacieId, items)) {
-      return res.status(400).json({ error: "Panier vide ou articles provenant de plusieurs pharmacies." });
-    }
-
-    // 1. Créer la commande en base avec le statut EN_ATTENTE_DE_PAIEMENT
-    const commande = await prisma.commande.create({
-      data: {
-        patientId: req.user.id,
-        pharmacieId,
-        total: parseFloat(total),
-        items: items, // Stockage complet au format JSON
-        status: "EN_ATTENTE_DE_PAIEMENT"
-      }
-    });
-
-    const frontendUrl = customFrontendUrl || process.env.FRONTEND_URL || 'http://localhost:5173';
-
-    // 2. Tenter de créer une session Stripe réelle
-    try {
-      const lineItems = items.map(item => ({
-        price_data: {
-          currency: 'eur',
-          product_data: {
-            name: item.medicament.nom,
-            description: `Officine de retrait : ${item.pharmacie.name}`,
-          },
-          unit_amount: Math.round((item.medicament.prix || 0) * 100), // En centimes
-        },
-        quantity: item.qty || 1,
-      }));
-
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: lineItems,
-        mode: 'payment',
-        success_url: `${frontendUrl}/?payment=success&commande_id=${commande.id}&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${frontendUrl}/?payment=cancel&commande_id=${commande.id}`,
-        metadata: {
-          commandeId: commande.id,
-          patientId: req.user.id,
-        }
-      });
-
-      return res.status(200).json({ url: session.url, sessionId: session.id });
-    } catch (stripeError) {
-      if (process.env.NODE_ENV === 'production') {
-        console.error("Stripe indisponible en production :", stripeError.message);
-        return res.status(502).json({ error: "Le paiement est temporairement indisponible." });
-      }
-
-      console.warn("⚠️ Stripe secret key non configurée ou incorrecte. Simulation active. Erreur :", stripeError.message);
-      
-      // Simulation locale ultra-fluide si Stripe n'est pas configuré en dev
-      const mockSessionUrl = `${frontendUrl}/?payment=success&commande_id=${commande.id}&session_id=mock_session_${Date.now()}`;
-      return res.status(200).json({ url: mockSessionUrl, sessionId: `mock_${Date.now()}`, isMock: true });
-    }
-  } catch (error) {
-    console.error("Erreur lors de la création de la session de paiement :", error);
-    return res.status(500).json({ error: "Une erreur est survenue lors de l'initialisation du paiement." });
-  }
+  try { return res.json(await checkout.create(req.user.id, req.body)); }
+  catch (error) { return respondError(res, error); }
 }
 
 async function verifyCheckoutSession(req, res) {
-  const { commandeId, sessionId } = req.body;
   try {
-    if (!commandeId || !sessionId) {
-      return res.status(400).json({ error: "Paramètres manquants pour la vérification." });
-    }
-
-    // Récupérer la commande
-    const commande = await prisma.commande.findUnique({
-      where: { id: commandeId }
-    });
-
-    if (!commande) {
-      return res.status(404).json({ error: "Commande introuvable." });
-    }
-
-    if (commande.patientId !== req.user.id) {
-      return res.status(403).json({ error: "Vous n'êtes pas autorisé à vérifier cette commande." });
-    }
-
-    // Si elle est déjà payée, pas besoin de refaire l'opération
-    if (commande.status !== "EN_ATTENTE_DE_PAIEMENT") {
-      return res.status(200).json({ message: "Paiement déjà enregistré avec succès.", commande });
-    }
-
-    let isPaid = false;
-    if (sessionId.startsWith('mock_') && process.env.NODE_ENV !== 'production') {
-      isPaid = true;
+    const { commandeId, sessionId } = req.body;
+    if (typeof commandeId !== 'string' || typeof sessionId !== 'string') return res.status(400).json({ error: 'Paramètres manquants.' });
+    const commande = await prisma.commande.findUnique({ where: { id: commandeId } });
+    if (!commande || commande.patientId !== req.user.id) return res.status(404).json({ error: 'Commande introuvable.' });
+    if (commande.stripeSessionId !== sessionId) return res.status(409).json({ error: 'Session étrangère à cette commande.' });
+    let session;
+    if (sessionId.startsWith('mock_') && process.env.NODE_ENV !== 'production' && process.env.DEMO_PAYMENTS === 'true') {
+      session = { id: sessionId, payment_status: 'paid', currency: 'eur', amount_total: Math.round(commande.total * 100),
+        metadata: { commandeId, patientId: req.user.id } };
     } else {
-      try {
-        const session = await stripe.checkout.sessions.retrieve(sessionId);
-        if (session.payment_status === 'paid') {
-          isPaid = true;
-        }
-      } catch (stripeVerifyErr) {
-        console.error("Erreur d'authentification Stripe lors de la vérification :", stripeVerifyErr.message);
-        return res.status(502).json({ error: "Le paiement n'a pas pu être vérifié auprès de Stripe." });
-      }
+      session = await stripe.checkout.sessions.retrieve(sessionId);
     }
+    const updated = await care.confirmPayment(req.user.id, commandeId, session);
+    return res.json({ message: updated.ordonnanceId ? 'Paiement confirmé. L’ordonnance attend la validation de délivrance.' : 'Paiement confirmé. La commande peut être préparée.', commande: updated });
+  } catch (error) { return respondError(res, error); }
+}
 
-    if (isPaid) {
-      // Déduire les stocks de la pharmacie concernée pour chaque produit
-      let items;
-      try {
-        items = typeof commande.items === 'string' ? JSON.parse(commande.items) : commande.items;
-      } catch (parseError) {
-        console.error("Erreur de parsing des articles de la commande:", parseError);
-        return res.status(500).json({ error: "Les données des articles associés à cette commande sont corrompues ou invalides." });
-      }
-      const txOperations = [];
-
-      for (const item of items) {
-        // Chercher la ligne de stock correspondante dans cette pharmacie
-        const stock = await prisma.stock.findFirst({
-          where: {
-            pharmacieId: commande.pharmacieId,
-            medicamentId: item.medicamentId
-          }
-        });
-
-        if (stock) {
-          const newQty = Math.max(0, stock.quantite - (item.qty || 1));
-          txOperations.push(
-            prisma.stock.update({
-              where: { id: stock.id },
-              data: { quantite: newQty }
-            })
-          );
-        }
-      }
-
-      // Mettre à jour le statut de la commande à "PAYEE" (qui équivaut à "En cours de préparation")
-      txOperations.push(
-        prisma.commande.update({
-          where: { id: commandeId },
-          data: { status: "PAYEE" }
-        })
-      );
-
-      // Exécuter l'ensemble des débits de stock et l'update de statut de manière transactionnelle
-      await prisma.$transaction(txOperations);
-
-      return res.status(200).json({ message: "Paiement validé et stocks mis à jour avec succès !", commande: { ...commande, status: "PAYEE" } });
-    } else {
-      return res.status(400).json({ error: "Le paiement Stripe n'a pas été validé." });
-    }
-  } catch (error) {
-    console.error("Erreur lors de la vérification du paiement :", error);
-    return res.status(500).json({ error: "Erreur lors de la validation finale de votre commande." });
-  }
+async function cancelCommande(req, res) {
+  try {
+    const commande = await checkout.cancel(req.user.id, req.params.id);
+    return res.json({ message: 'Réservation annulée, stock et ordonnance libérés.', commande });
+  } catch (error) { return respondError(res, error); }
 }
 
 async function getMyCommandes(req, res) {
   try {
     const commandes = await prisma.commande.findMany({
       where: { patientId: req.user.id },
-      include: { pharmacie: true },
+      include: { pharmacie: true, ordonnance: { select: { status: true, dateDelivrance: true } } },
       orderBy: { createdAt: 'desc' }
     });
     const now = Date.now();
     const updatedCommandes = await Promise.all(commandes.map(async commande => {
-      const elapsedSeconds = (now - new Date(commande.createdAt).getTime()) / 1000;
+      if (commande.ordonnanceId && commande.ordonnance?.status !== 'DELIVREE') return commande;
+      const start = Math.max(new Date(commande.paidAt || commande.createdAt).getTime(), new Date(commande.ordonnance?.dateDelivrance || 0).getTime());
+      const elapsedSeconds = (now - start) / 1000;
       const nextStatus = elapsedSeconds >= 600 ? 'LIVREE' : elapsedSeconds >= 180 && commande.status === 'PAYEE' ? 'EN_ROUTE' : commande.status;
       if (nextStatus !== commande.status && ['PAYEE', 'EN_ROUTE'].includes(commande.status)) {
-        return prisma.commande.update({ where: { id: commande.id }, data: { status: nextStatus }, include: { pharmacie: true } });
+        await prisma.commande.updateMany({ where: { id: commande.id, status: commande.status }, data: { status: nextStatus } });
+        return prisma.commande.findUnique({ where: { id: commande.id }, include: { pharmacie: true, ordonnance: { select: { status: true, dateDelivrance: true } } } });
       }
       return commande;
     }));
@@ -372,10 +248,12 @@ module.exports = {
   getAutocomplete,
   getMyPrescriptions,
   requestRenewal,
+  prescriptionPharmacies,
   createCommande,
   getMessages,
   sendMessage,
   createCheckoutSession,
   verifyCheckoutSession,
+  cancelCommande,
   getMyCommandes
 };

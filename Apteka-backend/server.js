@@ -50,9 +50,10 @@ app.get('/api/public/medicaments', async (req, res) => {
   try {
     const { page, limit, search } = req.query;
     
-    let whereClause = {};
+    let whereClause = { isActive: true };
     if (search && search.trim() !== '') {
       whereClause = {
+        isActive: true,
         OR: [
           { nom: { contains: search, mode: 'insensitive' } },
           { substanceActive: { contains: search, mode: 'insensitive' } }

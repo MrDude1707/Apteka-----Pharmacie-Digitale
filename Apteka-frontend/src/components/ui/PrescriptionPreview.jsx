@@ -9,6 +9,8 @@ export default function PrescriptionPreview({
   items = [], 
   code = "", 
   date = "", 
+  renewable = false,
+  dateExpiration = '',
   signed = false 
 }) {
   const currentDateStr = date || new Date().toLocaleDateString('fr-FR', {
@@ -140,7 +142,7 @@ export default function PrescriptionPreview({
                 <path id="sealCirclePath" d="M 50, 50 m -37, 0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0" fill="none" />
                 <text className="fill-white font-mono text-[7px] font-black tracking-[0.12em]">
                   <textPath href="#sealCirclePath" startOffset="0%">
-                    SECURE - APTEKA - OFFICIAL - ORIGINAL - 
+                    APTEKA - PROJET - PRESCRIPTION -
                   </textPath>
                 </text>
               </svg>
@@ -300,6 +302,10 @@ export default function PrescriptionPreview({
           </div>
         </div>
 
+        <div className="mt-4 text-[10px] text-slate-600">
+          <p>Demande de renouvellement : {renewable ? 'autorisée après délivrance, nouvelle décision médicale requise' : 'non autorisée'}.</p>
+          {dateExpiration && <p>Date limite de délivrance : {new Date(dateExpiration).toLocaleDateString('fr-FR')}.</p>}
+        </div>
         {/* Signature and Verification Footer */}
         <div style={{ transform: "translateZ(15px)" }} className="border-t border-slate-100 pt-6 mt-6 flex justify-between items-end relative min-h-[100px] z-10">
           {/* Verification QR Code */}
@@ -307,7 +313,7 @@ export default function PrescriptionPreview({
             {code ? (
               <div className="p-1.5 bg-white border border-gray-100 rounded-2xl shadow-inner shrink-0 hover:scale-105 transition-transform duration-300">
                 <QRCode 
-                  value={`https://apteka-digitale.site/verify/${code}`} 
+                  value={code}
                   size={56}
                   style={{ height: "auto", maxWidth: "100%", width: "100%" }}
                 />
@@ -319,10 +325,10 @@ export default function PrescriptionPreview({
             )}
             <div className="flex flex-col gap-0.5 max-w-[190px]">
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                <ShieldCheck size={11} className="text-emerald-500 stroke-[3]" /> Sécurité Blockchain
+                <ShieldCheck size={11} className="text-emerald-500 stroke-[3]" /> Vérification en officine
               </span>
               <p className="text-[9px] text-gray-400 leading-normal font-semibold">
-                Ordonnance signée numériquement et certifiée par cryptographie. Flashez pour authentifier l'officine.
+                Code à vérifier dans l’espace pharmacien. Validation enregistrée, sans certification cryptographique.
               </p>
             </div>
           </div>
@@ -384,9 +390,9 @@ export default function PrescriptionPreview({
                 
                 <div className="text-[7.5px] font-black tracking-[0.15em] text-emerald-600">DR. {doctor.lastName ? doctor.lastName.toUpperCase() : "RAZAFY"}</div>
                 <div className="text-[10px] font-black my-0.5 flex items-center gap-1 justify-center">
-                  <ShieldCheck size={11} className="stroke-[3]" /> AGRÉÉ APTEKA
+                  <ShieldCheck size={11} className="stroke-[3]" /> VALIDÉE APTEKA
                 </div>
-                <div className="text-[6.5px] tracking-widest font-black text-emerald-600/70">MINISTÈRE SANTÉ</div>
+                <div className="text-[6.5px] tracking-widest font-black text-emerald-600/70">PROJET DE MÉMOIRE</div>
                 <div className="text-[5.5px] font-mono mt-0.5 leading-none opacity-85 border-t border-emerald-600/20 pt-1 w-[80%] mx-auto">
                   {code || "ORD-SECURE"}
                 </div>
@@ -397,7 +403,7 @@ export default function PrescriptionPreview({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
                 </span>
-                <span className="text-[9px] text-gray-500 font-extrabold">En attente de signature</span>
+                <span className="text-[9px] text-gray-500 font-extrabold">En attente de validation</span>
               </div>
             )}
 

@@ -1,4 +1,6 @@
 const prisma = require('../prisma');
+const { createCareWorkflows, respondError, expired } = require('../services/careWorkflows');
+const care = createCareWorkflows(prisma);
 
 /**
  * Rechercher un patient par email pour rédiger une ordonnance
@@ -20,6 +22,7 @@ async function searchPatient(req, res) {
       return res.status(404).json({ error: "Aucun compte Patient trouvé pour cet email." });
     }
 
+    await care.related(patient.id, req.user.id);
     return res.status(200).json({
       id: patient.id,
       email: patient.email,
@@ -27,7 +30,7 @@ async function searchPatient(req, res) {
       lastName: patient.profile.lastName
     });
   } catch (error) {
-    return res.status(500).json({ error: "Erreur lors de la recherche du patient." });
+    return respondError(res, error);
   }
 }
 
@@ -83,61 +86,10 @@ async function getStocksByMedicament(req, res) {
  * RÉDIGER ET VALIDER UNE PRESCRIPTION (ORDONNANCE ÉLECTRONIQUE)
  */
 async function createOrdonnance(req, res) {
-  const { patientId, medicaments } = req.body;
-
   try {
-    if (!patientId || !medicaments || !Array.isArray(medicaments) || medicaments.length === 0) {
-      return res.status(400).json({ error: "Veuillez spécifier un patient et au moins un médicament prescrit." });
-    }
-
-    const patient = await prisma.user.findUnique({
-      where: { id: patientId },
-      include: { profile: true }
-    });
-    if (!patient || !patient.profile || patient.profile.role !== 'PATIENT') {
-      return res.status(404).json({ error: "Le patient spécifié est introuvable." });
-    }
-    if (patient.profile.status !== 'ACTIVE') {
-      return res.status(409).json({ error: "Le compte de ce patient n'est pas actif." });
-    }
-
-    const invalidMedication = medicaments.some(item => (
-      !item
-      || typeof item.medicamentId !== 'string'
-      || typeof item.nom !== 'string'
-      || !item.nom.trim()
-      || !Number.isInteger(Number(item.quantite))
-      || Number(item.quantite) < 1
-      || typeof item.posologie !== 'string'
-      || !item.posologie.trim()
-      || typeof item.duree !== 'string'
-      || !item.duree.trim()
-    ));
-    if (invalidMedication) {
-      return res.status(400).json({ error: "Chaque médicament doit avoir un nom, une quantité, une posologie et une durée valides." });
-    }
-
-    const code = 'ORD-' + Math.floor(1000 + Math.random() * 9000).toString();
-
-    const ordonnance = await prisma.ordonnance.create({
-      data: {
-        code,
-        medecinId: req.user.id,
-        patientId,
-        status: 'PENDING',
-        medicaments
-      }
-    });
-
-    return res.status(201).json({
-      message: "Ordonnance électronique validée et signée cryptographiquement avec succès !",
-      ordonnanceCode: code,
-      ordonnance
-    });
-  } catch (error) {
-    console.error("Erreur de création d'ordonnance:", error);
-    return res.status(500).json({ error: "Une erreur est survenue lors de l'émission de la prescription." });
-  }
+    const ordonnance = await care.prescribe(req.user.id, req.body);
+    return res.status(201).json({ message: 'Ordonnance validée électroniquement.', ordonnanceCode: ordonnance.code, ordonnance });
+  } catch (error) { return respondError(res, error); }
 }
 
 /**
@@ -158,6 +110,7 @@ async function getDoctorPrescriptions(req, res) {
       });
       populated.push({
         ...p,
+        status: p.status === 'PENDING' && expired(p) ? 'EXPIREE' : p.status,
         patientName: patient?.profile ? `${patient.profile.firstName} ${patient.profile.lastName}` : "Patient Inconnu"
       });
     }
@@ -178,7 +131,7 @@ async function getMyPatients(req, res) {
       where: { userId: req.user.id }
     });
 
-    if (!medecinDisponible) {
+    if (!medecinDisponible?.actif) {
       return res.status(200).json({
         linked: false,
         message: "Votre compte n'est pas encore relié à une fiche médecin vitrine, aucun patient ne peut donc vous avoir choisi pour l'instant.",
@@ -187,7 +140,7 @@ async function getMyPatients(req, res) {
     }
 
     const profiles = await prisma.profile.findMany({
-      where: { medecinChoisiId: medecinDisponible.id, role: 'PATIENT' }
+      where: { medecinChoisiId: medecinDisponible.id, role: 'PATIENT', status: 'ACTIVE' }
     });
 
     const patients = [];
@@ -224,49 +177,34 @@ module.exports = {
 // TACHE 4 : RENOUVELLEMENT ORDONNANCES
 async function getRenewals(req, res) {
   try {
-    const renewals = await prisma.ordonnance.findMany({
-      where: { medecinId: req.user.id, status: 'RENEWAL_REQUESTED' },
-      include: { patient: { include: { profile: true } } }
+    const requests = await prisma.renewalRequest.findMany({
+      where: { ordonnance: { medecinId: req.user.id, patient: { profile: { medecinChoisi: { userId: req.user.id, actif: true } } } } },
+      include: { ordonnance: { include: { patient: { select: { id: true, email: true, profile: true } } } } },
+      orderBy: { requestedAt: 'desc' }
     });
-    return res.status(200).json(renewals);
-  } catch (err) {
-    return res.status(500).json({ error: "Erreur chargement renouvellements." });
-  }
+    return res.json(requests.map(r => ({ ...r.ordonnance, renewal: { id: r.id, status: r.status, requestedAt: r.requestedAt, decidedAt: r.decidedAt, reason: r.reason, newOrdonnanceId: r.newOrdonnanceId } })));
+  } catch (error) { return respondError(res, error); }
 }
 
 async function approveRenewal(req, res) {
-  const { id } = req.params;
   try {
-    const oldOrd = await prisma.ordonnance.findFirst({
-      where: {
-        id,
-        medecinId: req.user.id,
-        status: 'RENEWAL_REQUESTED'
-      }
-    });
-    if (!oldOrd) return res.status(404).json({ error: "Ordonnance introuvable." });
-    
-    // Marquer l'ancienne comme délivrée/archivée
-    await prisma.ordonnance.update({ where: { id }, data: { status: 'DELIVREE' } });
-    
-    // Créer la nouvelle
-    const code = 'ORD-REN-' + Math.floor(1000 + Math.random() * 9000).toString();
-    const newOrd = await prisma.ordonnance.create({
-      data: {
-        code, medecinId: oldOrd.medecinId, patientId: oldOrd.patientId, status: 'PENDING',
-        medicaments: oldOrd.medicaments, parentOrdonnanceId: id
-      }
-    });
-    return res.status(200).json({ message: "Renouvellement approuvé avec succès.", newOrdonnance: newOrd });
-  } catch (err) {
-    return res.status(500).json({ error: "Erreur approbation renouvellement." });
-  }
+    const result = await care.decideRenewal(req.user.id, req.params.id, 'ACCEPTEE', null, req.body || {});
+    return res.json({ message: 'Renouvellement accepté. Une nouvelle ordonnance a été émise.', ...result });
+  } catch (error) { return respondError(res, error); }
+}
+
+async function rejectRenewal(req, res) {
+  try {
+    const result = await care.decideRenewal(req.user.id, req.params.id, 'REFUSEE', req.body?.reason);
+    return res.json({ message: 'Refus enregistré et consultable par le patient.', ...result });
+  } catch (error) { return respondError(res, error); }
 }
 
 // TACHE 3 : MESSAGERIE
 async function getMessagesWithPatient(req, res) {
   const { patientId } = req.params;
   try {
+    await care.related(patientId, req.user.id);
     const messages = await prisma.message.findMany({
       where: {
         OR: [
@@ -278,23 +216,18 @@ async function getMessagesWithPatient(req, res) {
     });
     return res.status(200).json(messages);
   } catch(e) {
-    return res.status(500).json({ error: "Erreur lors de la récupération des messages." });
+    return respondError(res, e);
   }
 }
 
 async function sendMessage(req, res) {
-  const { receiverId, content } = req.body;
   try {
-    const msg = await prisma.message.create({
-      data: { senderId: req.user.id, receiverId, content }
-    });
+    const msg = await care.sendMessage(req.user.id, req.body.receiverId, req.body.content, 'MEDECIN');
     return res.status(201).json(msg);
-  } catch(e) {
-    return res.status(500).json({ error: "Erreur lors de l'envoi du message." });
-  }
+  } catch (error) { return respondError(res, error); }
 }
 
 module.exports = {
   searchPatient, getPharmaciesByZone, getStocksByMedicament, createOrdonnance, getDoctorPrescriptions, getMyPatients,
-  getRenewals, approveRenewal, getMessagesWithPatient, sendMessage // <-- NOUVEAU
+  getRenewals, approveRenewal, rejectRenewal, getMessagesWithPatient, sendMessage // <-- NOUVEAU
 };

@@ -20,12 +20,16 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
   const [medicationSearch, setMedicationSearch] = useState('');
   
   // Prescription Builder State
+  const [renewable, setRenewable] = useState(false);
+  const [dateExpiration, setDateExpiration] = useState('');
+  const [renewalOptions, setRenewalOptions] = useState({});
+  const [renewalBusy, setRenewalBusy] = useState(null);
   const [prescribedItems, setPrescribedItems] = useState([]); // Array of { medicamentId, nom, dosage, quantite, posologie, duree }
   const [selectedMedId, setSelectedMedId] = useState('');
-  const [itemDosage, setItemDosage] = useState('1 comprimé');
+  const [itemDosage, setItemDosage] = useState('');
   const [itemQuantite, setItemQuantite] = useState(1);
-  const [itemPosologie, setItemPosologie] = useState('3 fois par jour');
-  const [itemDuree, setItemDuree] = useState('5 jours');
+  const [itemPosologie, setItemPosologie] = useState('');
+  const [itemDuree, setItemDuree] = useState('');
 
   // Network Stocks Lookup State
   const [lookupMedId, setLookupMedId] = useState('');
@@ -54,6 +58,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [successCode, setSuccessCode] = useState('');
+  const [issuedPrescription, setIssuedPrescription] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const filteredMedicaments = medicaments.filter(medicament => {
@@ -153,9 +158,10 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
         }));
         setRenewals(parsedRenewals);
         const lastNotifiedRenewal = localStorage.getItem('apteka:last-renewal-notification');
-        if (parsedRenewals[0] && parsedRenewals[0].id !== lastNotifiedRenewal) {
-          localStorage.setItem('apteka:last-renewal-notification', parsedRenewals[0].id);
-          window.dispatchEvent(new CustomEvent('apteka:doctor-notification', { detail: parsedRenewals[0] }));
+        const pendingRenewal = parsedRenewals.find(r => r.renewal?.status === 'EN_ATTENTE');
+        if (pendingRenewal && pendingRenewal.id !== lastNotifiedRenewal) {
+          localStorage.setItem('apteka:last-renewal-notification', pendingRenewal.id);
+          window.dispatchEvent(new CustomEvent('apteka:doctor-notification', { detail: pendingRenewal }));
         }
       }
     } catch (err) {
@@ -166,12 +172,15 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
   };
 
   const handleApproveRenewal = async (renewalId) => {
-    if (!confirm("Voulez-vous vraiment approuver et renouveler cette ordonnance ? Une nouvelle ordonnance sera générée avec les mêmes médicaments.")) return;
+    if (renewalBusy) return;
+    if (!confirm("Valider une nouvelle ordonnance avec les médicaments et quantités affichés ?")) return;
+    setRenewalBusy(renewalId);
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/api/medecin/ordonnances/${renewalId}/approve-renewal`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(renewalOptions[renewalId] || {})
       });
       const data = await res.json();
       if (res.ok) {
@@ -181,8 +190,25 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
         notify(data.error || "Une erreur est survenue lors de l'approbation.", 'error');
       }
     } catch (err) {
-      console.error(err);
-    }
+      notify('Impossible de traiter la demande.', 'error');
+    } finally { setRenewalBusy(null); }
+  };
+
+  const handleRejectRenewal = async id => {
+    if (renewalBusy) return;
+    const reason = window.prompt('Motif du refus (visible par le patient) :');
+    if (!reason?.trim()) return;
+    setRenewalBusy(id);
+    try {
+      const response = await fetch(API_URL + '/api/medecin/ordonnances/' + id + '/reject-renewal', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      notify(data.message, 'success'); loadRenewals();
+    } catch (err) { notify(err.message, 'error'); }
+    finally { setRenewalBusy(null); }
   };
 
   useEffect(() => {
@@ -275,7 +301,10 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
   // Add Item to active prescription draft
   const handleAddItem = () => {
     const med = medicaments.find(m => m.id === selectedMedId);
-    if (!med) return;
+    if (!med || successCode || submitting) return;
+    if (!itemDosage.trim() || !itemPosologie.trim() || !itemDuree.trim() || !Number.isInteger(Number(itemQuantite)) || Number(itemQuantite) < 1) {
+      notify('Renseignez le dosage, la posologie, la durée et une quantité entière.', 'error'); return;
+    }
 
     if (prescribedItems.some(item => item.medicamentId === med.id)) {
       notify("Ce médicament est déjà présent dans l'ordonnance.", 'error');
@@ -294,10 +323,10 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
       }
     ]);
 
-    setItemDosage('1 comprimé');
+    setItemDosage('');
     setItemQuantite(1);
-    setItemPosologie('3 fois par jour');
-    setItemDuree('5 jours');
+    setItemPosologie('');
+    setItemDuree('');
   };
 
   const handleRemoveItem = (index) => {
@@ -305,7 +334,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
   };
 
   const handleSignPrescription = async () => {
-    if (!foundPatient) return;
+    if (!foundPatient || submitting || successCode) return;
     if (prescribedItems.length === 0) {
       notify("Veuillez ajouter au moins un médicament à l'ordonnance.", 'error');
       return;
@@ -326,7 +355,9 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
         },
         body: JSON.stringify({
           patientId: foundPatient.id,
-          medicaments: prescribedItems
+          medicaments: prescribedItems,
+          renewable,
+          dateExpiration: dateExpiration || null
         })
       });
       const data = await res.json();
@@ -336,6 +367,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
       } else {
         setSuccessMsg(data.message);
         setSuccessCode(data.ordonnanceCode);
+        setIssuedPrescription({ ...data.ordonnance, patient: foundPatient });
         setPatient(null);
         setPatientEmail('');
         setPrescribedItems([]);
@@ -533,11 +565,15 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
             {/* Actions de validation */}
             <div className="p-6 rounded-[24px] glass-premium-dark flex flex-col gap-4">
               <span className="text-[10px] font-black tracking-widest text-[#00f0ff] uppercase">Étape 3</span>
-              <h3 className="text-lg font-light text-white tracking-tight">Validation & Signature</h3>
+              <h3 className="text-lg font-light text-white tracking-tight">Validation de l’ordonnance</h3>
               <p className="text-xs text-white/50 leading-relaxed mt-0.5">
-                Veuillez relire attentivement l'ordonnance générée à droite. Une fois signée électroniquement, l'ordonnance sera enregistrée et un code unique ORD-XXXX sera généré.
+                Relisez le patient, les médicaments et les posologies. La validation enregistre la prescription et génère un code de vérification.
               </p>
 
+              <label className="flex items-start gap-3 text-sm text-white/80"><input type="checkbox" checked={renewable} onChange={e => setRenewable(e.target.checked)} />Autoriser une demande de renouvellement après délivrance (nouvelle décision médicale requise).</label>
+              <label className="text-sm text-white/80">Date limite de délivrance (facultative, fixée par le prescripteur)
+                <input type="date" value={dateExpiration} onChange={e => setDateExpiration(e.target.value)} className="mt-2 w-full rounded-xl border border-white/20 bg-zinc-900 p-3 text-white" />
+              </label>
               {error && <p className="text-red-400 text-xs font-bold text-center mt-2">❌ {error}</p>}
               
               {successCode && (
@@ -548,13 +584,13 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                   </span>
                   <p className="text-[11px] text-white/70 font-medium leading-normal">{successMsg}</p>
                   <div className="bg-black/40 border border-[#00f0ff]/30 rounded-xl p-4 shadow-inner">
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block">Code d'ordonnance officiel</span>
-                    <p className="text-xl font-mono font-black text-[#00f0ff] tracking-[4px] mt-1.5">
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-widest block">Code de vérification</span>
+                    <p className="break-all text-sm font-mono font-bold text-[#00f0ff] mt-1.5">
                       {successCode}
                     </p>
                   </div>
                   <p className="text-[10px] text-white/50 leading-relaxed mt-1">
-                    Communiquez ce code au patient. Il recevra également un email d'Apteka avec sa prescription officielle et son QR code.
+                    Communiquez ce code au patient. L’ordonnance est consultable dans son espace personnel.
                   </p>
                 </div>
               )}
@@ -567,14 +603,15 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                 data-cursor-magnet
               >
                 <Send size={14} />
-                {submitting ? "Cryptage & Signature..." : successCode ? "Prescription Signée avec succès" : "Signer l'ordonnance (Estampillage)"}
+                {submitting ? "Enregistrement..." : successCode ? "Prescription enregistrée" : "Valider l’ordonnance"}
               </button>
 
               {successCode && (
                 <button
                   type="button"
                   onClick={() => {
-                    setSuccessCode('');
+                    setRenewable(false); setDateExpiration('');
+                    setSuccessCode(''); setIssuedPrescription(null);
                     setSuccessMsg('');
                     setPatient(null);
                     setPatientEmail('');
@@ -638,10 +675,12 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                     email: user.email,
                     specialite: user.zone ? "Médecin conventionné - " + user.zone : "Médecin conventionné - Analakely"
                   }}
-                  patient={foundPatient}
-                  items={prescribedItems}
+                  patient={issuedPrescription?.patient || foundPatient}
+                  items={issuedPrescription?.medicaments || prescribedItems}
                   code={successCode}
                   signed={!!successCode}
+                  renewable={issuedPrescription ? issuedPrescription.renewable : renewable}
+                  dateExpiration={issuedPrescription ? issuedPrescription.dateExpiration : dateExpiration}
                 />
               </div>
             </div>
@@ -778,7 +817,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                         <span className={`inline-block px-3 py-1.5 rounded-full font-bold text-[10px] uppercase tracking-wider ${
                           p.status === 'DELIVREE' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
                         }`}>
-                          {p.status === 'DELIVREE' ? 'Délivrée' : 'En Attente'}
+                          {({ PENDING: 'Émise — à délivrer', DELIVREE: 'Délivrée', EXPIREE: 'Expirée', ANNULEE: 'Annulée' })[p.status] || p.status}
                         </span>
                       </td>
                     </tr>
@@ -792,7 +831,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-mono text-xs font-bold tracking-widest text-[#00f0ff]">{p.code}</span>
                     <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase ${p.status === 'DELIVREE' ? 'bg-green-500/10 text-green-400' : 'bg-orange-500/10 text-orange-400'}`}>
-                      {p.status === 'DELIVREE' ? 'Délivrée' : 'En attente'}
+                      {({ PENDING: 'Émise — à délivrer', DELIVREE: 'Délivrée', EXPIREE: 'Expirée', ANNULEE: 'Annulée' })[p.status] || p.status}
                     </span>
                   </div>
                   <p className="mt-4 text-sm font-bold text-white">{p.patientName}</p>
@@ -916,7 +955,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
           ) : renewals.length === 0 ? (
             <div className="py-20 text-center text-white/30 flex flex-col items-center justify-center gap-4">
               <RefreshCw size={48} className="stroke-[1] opacity-50" />
-              <p className="text-sm font-medium">Aucune demande de renouvellement en attente.</p>
+              <p className="text-sm font-medium">Aucune demande de renouvellement.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-5">
@@ -927,7 +966,7 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                       <span className="font-mono text-[#00f0ff] font-bold text-xs bg-[#00f0ff]/10 px-3 py-1.5 rounded-lg border border-[#00f0ff]/20">
                         {r.code}
                       </span>
-                      <span className="rounded-full bg-orange-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-orange-300">Demande à traiter</span>
+                      <span className="rounded-full bg-orange-500/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-orange-300">{r.renewal?.status === 'EN_ATTENTE' ? 'Demande à traiter' : r.renewal?.status === 'ACCEPTEE' ? 'Acceptée' : 'Refusée'}</span>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-white/70">Patient : <strong className="font-bold text-white">{r.patient?.profile?.firstName} {r.patient?.profile?.lastName}</strong></p>
@@ -950,14 +989,20 @@ export default function DoctorDashboard({ user, activeTab, setActiveTab }) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                    <button
+                  <div className="flex w-full flex-col gap-3 md:w-72">
+                    <p className="text-xs text-white/70">Demandée le {new Date(r.renewal.requestedAt).toLocaleDateString('fr-FR')}</p>
+                    {r.renewal.reason && <p className="text-sm text-white/80">{r.renewal.reason}</p>}
+                    {r.renewal.status === 'EN_ATTENTE' && <>
+                    <label className="flex gap-2 text-sm text-white/80"><input type="checkbox" checked={renewalOptions[r.id]?.renewable || false} onChange={e => setRenewalOptions(o => ({ ...o, [r.id]: { ...o[r.id], renewable: e.target.checked } }))} />Autoriser une future demande</label>
+                    <label className="text-sm text-white/80">Nouvelle date limite (facultative)<input type="date" className="mt-1 w-full rounded-xl bg-zinc-900 p-2" value={renewalOptions[r.id]?.dateExpiration || ''} onChange={e => setRenewalOptions(o => ({ ...o, [r.id]: { ...o[r.id], dateExpiration: e.target.value } }))} /></label>
+                    <button disabled={!!renewalBusy} onClick={() => handleRejectRenewal(r.id)} className="rounded-xl border border-red-300/40 px-4 py-3 text-sm text-red-200 disabled:opacity-50">Refuser avec motif</button>
+                    <button disabled={!!renewalBusy}
                       onClick={() => handleApproveRenewal(r.id)}
                       className="w-full px-6 py-4 bg-gradient-to-r from-[#00f0ff] to-blue-500 text-black rounded-xl text-xs font-bold hover:from-[#00c0cc] hover:to-blue-600 shadow-lg shadow-[#00f0ff]/20 transition-all cursor-none md:w-auto"
                       data-cursor-magnet
                     >
-                      Approuver & Générer
-                    </button>
+                      {renewalBusy === r.id ? 'Enregistrement…' : 'Approuver & Générer'}
+                    </button></>}
                   </div>
                 </div>
               ))}

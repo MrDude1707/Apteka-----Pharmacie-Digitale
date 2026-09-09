@@ -13,7 +13,8 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
 
   // Delivery Precheck Results
   const [stockStatus, setStockStatus] = useState([]); // { medicamentId, nom, requis, disponible, canDeliver }
-  const [canDeliverAll, setCanDeliverAll] = useState(true);
+  const [canDeliverAll, setCanDeliverAll] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(null);
 
   // My Pharmacy Inventory State
   const [myStocks, setMyStocks] = useState([]);
@@ -76,6 +77,9 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
 
   // Update order status
   const handleUpdateCommandeStatus = async (commandeId, nextStatus) => {
+    if (statusBusy) return;
+    if (nextStatus === 'PAYEE' && !window.confirm('Confirmez-vous avoir encaissé le paiement en officine ?')) return;
+    setStatusBusy(commandeId);
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/api/pharmacien/commandes/${commandeId}/status`, {
@@ -94,8 +98,8 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
         notify(data.error || "Erreur de mise à jour du statut.", 'error');
       }
     } catch (err) {
-      console.error(err);
-    }
+      notify('Impossible de mettre à jour la commande.', 'error');
+    } finally { setStatusBusy(null); }
   };
 
   useEffect(() => {
@@ -115,6 +119,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
     setSuccess('');
     setFoundOrdonnance(null);
     setStockStatus([]);
+    setCanDeliverAll(false);
     setSearching(true);
 
     try {
@@ -144,12 +149,22 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
 
   // Run Real-time Local Stock Pre-check
   const runLocalStockPrecheck = async (ordonnance) => {
+    setCanDeliverAll(false);
+    if (ordonnance.commande) {
+      const ready = ordonnance.status === 'PENDING' && ordonnance.commande.status === 'PAYEE' && ordonnance.commande.pharmacieId === user.pharmacie?.id;
+      setStockStatus((ordonnance.medicaments || []).map(m => ({ medicamentId: m.medicamentId, nom: m.nom, requis: m.quantite, disponible: m.quantite, canDeliver: ready })));
+      setCanDeliverAll(ready);
+      if (!ready) setError('Commande à payer en officine ou ordonnance non délivrable dans cette pharmacie.');
+      return;
+    }
+    if (ordonnance.status !== 'PENDING') return;
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/api/pharmacien/stocks`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const currentStocks = await res.json();
+      if (!res.ok || !Array.isArray(currentStocks)) throw new Error('Stock indisponible');
       
       const checkResults = [];
       let deliverable = true;
@@ -186,8 +201,8 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
 
   // Validate and execute delivery
   const handleDeliverOrdonnance = async () => {
-    if (!foundOrdonnance) return;
-    if (!window.confirm("Confirmer la délivrance définitive de cette ordonnance ? Cette action débitera le stock.")) return;
+    if (!foundOrdonnance || delivering || !canDeliverAll) return;
+    if (!window.confirm("Confirmer la remise des médicaments et la délivrance définitive ? Le stock déjà réservé ne sera pas débité à nouveau.")) return;
     setError('');
     setSuccess('');
     setDelivering(true);
@@ -337,7 +352,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
                   <span className={`px-4 py-2 rounded-xl text-[10px] uppercase font-black tracking-widest ${
                     foundOrdonnance.status === 'DELIVREE' ? 'bg-green-500/10 text-green-400 border border-green-500/30' : 'bg-orange-500/10 text-orange-400 border border-orange-500/30'
                   }`}>
-                    {foundOrdonnance.status === 'DELIVREE' ? 'Délivrée' : 'En Attente de retrait'}
+                    {({ DELIVREE: 'Délivrée', PENDING: 'À délivrer', EXPIREE: 'Expirée', ANNULEE: 'Annulée' })[foundOrdonnance.status] || foundOrdonnance.status}
                   </span>
                 </div>
 
@@ -435,6 +450,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
                   })}
                 </div>
 
+                {foundOrdonnance.commande && <p className="text-sm text-cyan-200">Quantités déjà réservées pour la commande associée. Aucun second débit à la délivrance.</p>}
                 {/* État global */}
                 {foundOrdonnance.status === 'DELIVREE' ? (
                   <div className="p-6 rounded-[20px] bg-green-500/10 border border-green-500/20 flex flex-col gap-3 text-center text-green-400 text-sm font-medium">
@@ -513,7 +529,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
           <div className="glass-premium-dark p-4 rounded-2xl flex flex-col sm:flex-row gap-3">
             <input value={commandeSearch} onChange={e => setCommandeSearch(e.target.value)} placeholder="Rechercher par patient, email ou numéro…" className="flex-1 px-4 py-3 rounded-xl bg-black/30 border border-white/10 text-sm text-white" />
             <select value={commandeFilter} onChange={e => setCommandeFilter(e.target.value)} className="px-4 py-3 rounded-xl bg-black/30 border border-white/10 text-sm text-white">
-              <option value="TOUS">Tous les statuts</option><option value="PAYEE">Payées</option><option value="EN_ROUTE">En route</option><option value="LIVREE">Livrées</option>
+              <option value="TOUS">Tous les statuts</option><option value="RESERVEE">À payer en officine</option><option value="ANNULEE">Annulées</option><option value="PAYEE">Payées</option><option value="EN_ROUTE">En route</option><option value="LIVREE">Livrées</option>
             </select>
           </div>
 
@@ -553,6 +569,8 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
                       <div>
                         <div className="flex items-center gap-3">
                           <span className="text-[10px] font-black text-[#00f0ff] uppercase tracking-widest">Commande : #{cmd.id.slice(0, 8)}</span>
+                          {cmd.status === 'RESERVEE' && <span className="text-sm text-amber-200">Réservée — à encaisser</span>}
+                          {cmd.status === 'ANNULEE' && <span className="text-sm text-white/60">Annulée</span>}
                           {cmd.status === "PAYEE" && <span className="bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[9px] font-black uppercase px-3 py-1 rounded-lg">📦 En préparation</span>}
                           {cmd.status === "EN_ROUTE" && <span className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[9px] font-black uppercase px-3 py-1 rounded-lg">🛵 En livraison</span>}
                           {cmd.status === "LIVREE" && <span className="bg-green-500/10 border border-green-500/20 text-green-400 text-[9px] font-black uppercase px-3 py-1 rounded-lg">✅ Livrée</span>}
@@ -587,11 +605,14 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
                       </div>
                     </div>
 
+                    {cmd.ordonnance && <p className="text-sm text-cyan-200">Ordonnance : {cmd.ordonnance.code} · {cmd.ordonnance.status === 'DELIVREE' ? 'Délivrée' : 'À valider dans Délivrer Ordonnance'}</p>}
+                    <p className="text-xs text-white/70">Suivi de livraison simulé pour la démonstration web.</p>
                     {/* ACTIONS DU PHARMACIEN */}
                     <div className="border-t border-white/10 pt-6 flex justify-end gap-4 mt-2">
+                      {cmd.status === 'RESERVEE' && <button disabled={!!statusBusy} onClick={() => handleUpdateCommandeStatus(cmd.id, 'PAYEE')} className="rounded-xl bg-white px-5 py-3 font-bold text-black disabled:opacity-50">Confirmer le paiement en officine</button>}
                       {cmd.status === "PAYEE" && (
                         <button
-                          onClick={() => handleUpdateCommandeStatus(cmd.id, "EN_ROUTE")}
+                          disabled={!!statusBusy || (!!cmd.ordonnanceId && cmd.ordonnance?.status !== 'DELIVREE')} onClick={() => handleUpdateCommandeStatus(cmd.id, "EN_ROUTE")}
                           className="px-6 py-4 rounded-xl bg-white hover:bg-[#00f0ff] text-black font-bold text-xs uppercase tracking-widest shadow-xl transition-all cursor-none flex items-center gap-3"
                           data-cursor-magnet
                         >
@@ -601,7 +622,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
                       
                       {cmd.status === "EN_ROUTE" && (
                         <button
-                          onClick={() => handleUpdateCommandeStatus(cmd.id, "LIVREE")}
+                          disabled={!!statusBusy} onClick={() => handleUpdateCommandeStatus(cmd.id, "LIVREE")}
                           className="px-6 py-4 rounded-xl bg-gradient-to-r from-[#00f0ff] to-blue-500 text-black hover:from-[#00c0cc] hover:to-blue-600 font-bold text-xs uppercase tracking-widest shadow-xl shadow-[#00f0ff]/20 transition-all cursor-none flex items-center gap-3"
                           data-cursor-magnet
                         >
@@ -632,7 +653,7 @@ export default function PharmacistDashboard({ user, activeTab, setActiveTab }) {
             <div className="flex items-center justify-between border-b border-white/10 pb-5">
               <div>
                 <h3 className="text-2xl font-light text-white tracking-tight">Inventaire Local</h3>
-                <p className="text-xs text-white/50 mt-1 font-medium">Gérez les niveaux de stock physiques de votre officine :</p>
+                <p className="text-xs text-white/50 mt-1 font-medium">Quantités disponibles, hors unités déjà réservées pour les commandes :</p>
               </div>
               <button
                 onClick={fetchMyStocks}

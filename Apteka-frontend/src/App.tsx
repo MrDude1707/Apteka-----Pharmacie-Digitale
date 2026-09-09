@@ -11,6 +11,7 @@ const DoctorDashboard = lazy(() => import('./components/DoctorDashboard'));
 const PharmacistDashboard = lazy(() => import('./components/PharmacistDashboard'));
 const PatientDashboard = lazy(() => import('./components/PatientDashboard'));
 const DashboardLayout = lazy(() => import('./components/dashboard/DashboardLayout'));
+const AdminCatalogue = lazy(() => import('./components/AdminCatalogue'));
 
 function LoadingScreen() {
   return <div className="flex h-screen items-center justify-center bg-[#050505]"><div className="w-1.5 h-1.5 bg-[#00f0ff] rounded-full animate-ping"></div></div>;
@@ -245,6 +246,7 @@ export default function App() {
   }
 
   const adminMenuItems = [
+    { id: 'admin_catalogue', label: 'Catalogue : délivrance', icon: ClipboardList },
     { id: 'admin_users', label: 'Comptes en attente', icon: ClipboardList },
     { id: 'admin_all_users', label: 'Tous les comptes', icon: Users },
     { id: 'admin_vitrine', label: 'Liaison Vitrines', icon: RefreshCw },
@@ -265,6 +267,7 @@ export default function App() {
       menuItems={adminMenuItems}
       onLogout={handleLogout}
     >
+      {activeTab === 'admin_catalogue' && <AdminCatalogue />}
       {/* ADMIN: COMPTES EN ATTENTE D'APPROBATION */}
       {activeTab === 'admin_users' && (
         <div className="flex flex-col gap-6 animate-in fade-in duration-300">

@@ -30,8 +30,8 @@ async function protect(req, res, next) {
       }
 
       // SÉCURITÉ CRITIQUE : Empêcher l'accès si le profil est suspendu ou rejeté par l'admin en temps réel
-      if (user.profile && (user.profile.status === 'BLOCKED' || user.profile.status === 'REJECTED')) {
-        return res.status(403).json({ error: "Votre compte a été suspendu ou désactivé. Veuillez contacter l'assistance." });
+      if (!user.profile || user.profile.status !== 'ACTIVE') {
+        return res.status(403).json({ error: "Votre compte n’est pas actif : validation requise ou accès suspendu. Veuillez contacter l’assistance." });
       }
 
       req.user = user;
@@ -56,6 +56,13 @@ function isAdmin(req, res, next) {
   } else {
     return res.status(403).json({ error: "Accès interdit. Rôle Administrateur requis." });
   }
+}
+
+function isPatient(req, res, next) {
+  if (req.user?.profile?.role !== 'PATIENT' || req.user.profile.status !== 'ACTIVE') {
+    return res.status(403).json({ error: 'Accès réservé aux patients actifs.' });
+  }
+  next();
 }
 
 /**
@@ -89,6 +96,7 @@ function isPharmacien(req, res, next) {
 module.exports = {
   protect,
   isAdmin,
+  isPatient,
   isMedecin,
   isPharmacien
 };

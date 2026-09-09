@@ -46,6 +46,7 @@ async function register(req, res) {
   const { email, password, firstName, lastName, role, phone, zone, pharmacieId, wantsMedecin, medecinChoisiId } = req.body;
 
   try {
+    if (!['PATIENT', 'MEDECIN', 'PHARMACIEN'].includes(role)) return res.status(400).json({ error: 'Rôle non autorisé à l’inscription.' });
     if (!email || !password || !firstName || !lastName || !role) {
       return res.status(400).json({ error: "Veuillez remplir tous les champs obligatoires." });
     }
@@ -73,7 +74,9 @@ async function register(req, res) {
     let medecinChoisiValide = null;
     if (role === 'PATIENT' && wantsMedecin && medecinChoisiId) {
       medecinChoisiValide = await prisma.medecinDisponible.findUnique({ where: { id: medecinChoisiId } });
-      if (!medecinChoisiValide) {
+      const chosenProfile = medecinChoisiValide?.userId
+        ? await prisma.profile.findUnique({ where: { userId: medecinChoisiValide.userId } }) : null;
+      if (!medecinChoisiValide?.actif || chosenProfile?.role !== 'MEDECIN' || chosenProfile.status !== 'ACTIVE') {
         return res.status(400).json({ error: "Le médecin sélectionné n'existe pas ou n'est plus disponible." });
       }
     }
@@ -181,10 +184,10 @@ async function verifyOtp(req, res) {
       return res.status(400).json({ error: "Le code OTP a expiré. Veuillez en demander un nouveau." });
     }
 
-    await prisma.profile.update({
-      where: { userId },
-      data: { status: 'ACTIVE' }
+    const changed = await prisma.profile.updateMany({
+      where: { userId, role: 'PATIENT', status: 'PENDING' }, data: { status: 'ACTIVE' }
     });
+    if (changed.count !== 1) return res.status(409).json({ error: 'Activation réservée aux patients en attente.' });
 
     await prisma.otpCode.deleteMany({ where: { userId, type: 'REGISTER' } });
 
@@ -346,10 +349,12 @@ async function approveProfessional(req, res) {
     if (!current) return res.status(404).json({ error: "Profil introuvable." });
     if (!['MEDECIN', 'PHARMACIEN'].includes(current.role)) return res.status(400).json({ error: "Seuls les profils professionnels peuvent être approuvés." });
     if (current.status !== 'PENDING') return res.status(409).json({ error: "Ce profil a déjà été traité." });
-    const profile = await prisma.profile.update({
-      where: { id: profileId },
+    const changed = await prisma.profile.updateMany({
+      where: { id: profileId, status: 'PENDING', role: { in: ['MEDECIN', 'PHARMACIEN'] } },
       data: { status: 'ACTIVE' }
     });
+    if (changed.count !== 1) return res.status(409).json({ error: 'Ce profil vient d’être traité.' });
+    const profile = { ...current, status: 'ACTIVE' };
 
     const user = await prisma.user.findUnique({ where: { id: profile.userId } });
     if (user) {
@@ -385,11 +390,14 @@ async function rejectProfessional(req, res) {
   try {
     const current = await prisma.profile.findUnique({ where: { id: profileId } });
     if (!current) return res.status(404).json({ error: "Profil introuvable." });
+    if (!['MEDECIN', 'PHARMACIEN'].includes(current.role)) return res.status(400).json({ error: 'Profil professionnel requis.' });
     if (current.status !== 'PENDING') return res.status(409).json({ error: "Ce profil a déjà été traité." });
-    const profile = await prisma.profile.update({
-      where: { id: profileId },
+    const changed = await prisma.profile.updateMany({
+      where: { id: profileId, status: 'PENDING', role: { in: ['MEDECIN', 'PHARMACIEN'] } },
       data: { status: 'REJECTED' }
     });
+    if (changed.count !== 1) return res.status(409).json({ error: 'Ce profil vient d’être traité.' });
+    const profile = { ...current, status: 'REJECTED' };
 
     return res.status(200).json({ message: `Le compte de ${profile.firstName} ${profile.lastName} a été refusé.` });
   } catch (error) {
@@ -452,6 +460,7 @@ async function toggleBlockUser(req, res) {
       return res.status(400).json({ error: "Impossible de bloquer un compte administrateur." });
     }
 
+    if (!['ACTIVE', 'BLOCKED'].includes(profile.status)) return res.status(409).json({ error: 'Traitez d’abord la demande d’approbation de ce compte.' });
     const newStatus = profile.status === 'BLOCKED' ? 'ACTIVE' : 'BLOCKED';
     const updated = await prisma.profile.update({
       where: { id: profileId },
@@ -615,7 +624,7 @@ async function resendOtp(req, res) {
     if (!user || !profile) {
       return res.status(404).json({ error: "Compte introuvable." });
     }
-    if (profile.status !== 'PENDING') {
+    if (profile.role !== 'PATIENT' || profile.status !== 'PENDING') {
       return res.status(400).json({ error: "Ce compte n'est pas en attente de validation." });
     }
 
@@ -747,10 +756,10 @@ module.exports = {
  */
 async function getVitrineDocs(req, res) {
   try {
-    const vitrines = await prisma.medecinDisponible.findMany({ include: { user: { include: { profile: true } } } });
+    const vitrines = await prisma.medecinDisponible.findMany({ include: { user: { select: { id: true, email: true, profile: true } } } });
     const medecins = await prisma.user.findMany({
       where: { profile: { role: 'MEDECIN', status: 'ACTIVE' } },
-      include: { profile: true }
+      select: { id: true, email: true, profile: true }
     });
     return res.status(200).json({ vitrines, medecins });
   } catch (error) {
@@ -765,6 +774,10 @@ async function linkVitrineDoc(req, res) {
   const { id } = req.params;
   const { userId } = req.body;
   try {
+    if (userId) {
+      const profile = await prisma.profile.findUnique({ where: { userId } });
+      if (profile?.role !== 'MEDECIN' || profile.status !== 'ACTIVE') return res.status(400).json({ error: 'Seul un médecin actif peut être rattaché à une fiche.' });
+    }
     await prisma.medecinDisponible.update({
       where: { id },
       data: { userId: userId || null }

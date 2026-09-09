@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const catalogueController = require('../controllers/catalogueController');
 const { protect, isAdmin } = require('../middlewares/auth');
 const { createLimiter } = require('../middlewares/rateLimiter');
 
@@ -34,6 +35,8 @@ router.post('/admin/reject/:profileId', protect, isAdmin, authController.rejectP
 router.get('/admin/all-users', protect, isAdmin, authController.getAllUsers);
 router.post('/admin/toggle-block/:profileId', protect, isAdmin, authController.toggleBlockUser);
 router.get('/admin/stats', protect, isAdmin, authController.getAdminStats);
+router.get('/admin/catalogue', protect, isAdmin, catalogueController.list);
+router.put('/admin/catalogue/:id', protect, isAdmin, catalogueController.update);
 
 // NOUVELLES ROUTES ADMIN (TACHE 1)
 router.get('/admin/vitrine', protect, isAdmin, authController.getVitrineDocs);

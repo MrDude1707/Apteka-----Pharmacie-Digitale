@@ -26,6 +26,14 @@ enum OrdonnanceStatus {
   PENDING
   DELIVREE
   RENEWAL_REQUESTED
+  EXPIREE
+  ANNULEE
+}
+
+enum RenewalStatus {
+  EN_ATTENTE
+  ACCEPTEE
+  REFUSEE
 }
 
 model User {
@@ -110,6 +118,10 @@ model Medicament {
   categorie         String?
   tags              String?
   isPopular         Boolean  @default(false)
+  requiresPrescription Boolean @default(true)
+  classificationReviewed Boolean @default(false)
+  classificationSource String?
+  isActive          Boolean @default(true)
   createdAt         DateTime @default(now())
 
   stocks            Stock[]
@@ -144,10 +156,26 @@ model Ordonnance {
   
   renouvellementDemande Boolean          @default(false)
   parentOrdonnanceId    String?
+  renewable             Boolean          @default(false)
+  dateExpiration        DateTime?
+  renewal               RenewalRequest?
+  commande              Commande?
 
   @@index([medecinId])
   @@index([patientId])
   @@index([status])
+}
+
+model RenewalRequest {
+  id           String @id @default(uuid())
+  ordonnanceId String @unique
+  ordonnance   Ordonnance @relation(fields: [ordonnanceId], references: [id])
+  status       RenewalStatus @default(EN_ATTENTE)
+  requestedAt  DateTime @default(now())
+  decidedAt    DateTime?
+  decidedBy    String?
+  reason       String?
+  newOrdonnanceId String? @unique
 }
 
 model OtpCode {
@@ -178,6 +206,11 @@ model Commande {
   pharmacie   Pharmacie @relation(fields: [pharmacieId], references: [id])
   total       Float
   items       Json
-  status      String    @default("PAYEE")
+  status      String    @default("RESERVEE")
   createdAt   DateTime  @default(now())
+  ordonnanceId String? @unique
+  ordonnance   Ordonnance? @relation(fields: [ordonnanceId], references: [id])
+  stripeSessionId String? @unique
+  stockReserved Boolean @default(false)
+  paidAt DateTime?
 }

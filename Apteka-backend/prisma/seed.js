@@ -11,6 +11,7 @@ async function main() {
   if (shouldClean) {
     console.log('⚠️ Mode CLEAN détecté : réinitialisation complète de la base de données...');
     await prisma.commande.deleteMany();
+    await prisma.renewalRequest.deleteMany();
     await prisma.message.deleteMany();
     await prisma.otpCode.deleteMany();
     await prisma.ordonnance.deleteMany();
