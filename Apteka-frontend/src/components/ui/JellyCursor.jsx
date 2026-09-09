@@ -3,7 +3,9 @@ import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 
 export default function JellyCursor() {
   const [isHovering, setIsHovering] = useState(false);
-  const isTouchDevice = useRef(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(() =>
+    typeof window !== 'undefined' && (window.innerWidth < 768 || !window.matchMedia('(hover: hover) and (pointer: fine)').matches)
+  );
 
   // Position of the center dot (bypasses React re-renders completely on mousemove)
   const mouseX = useMotionValue(-100);
@@ -48,8 +50,8 @@ export default function JellyCursor() {
 
   useEffect(() => {
     // Check if device is touch-based
-    if (window.matchMedia("(pointer: coarse)").matches) {
-      isTouchDevice.current = true;
+    if (window.innerWidth < 768 || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      setIsTouchDevice(true);
       return;
     }
 
@@ -118,7 +120,7 @@ export default function JellyCursor() {
   }, [isHovering, springX, springY, springWidth, springHeight, springRadius, velocityX, velocityY, mouseX, mouseY]);
 
   // If touch device, do not render any custom cursor
-  if (isTouchDevice.current) return null;
+  if (isTouchDevice) return null;
 
   return (
     <>

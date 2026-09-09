@@ -37,10 +37,10 @@ export default function LandingPage({ onLoginSuccess }) {
   };
 
   return (
-    <div className="relative font-sans bg-[#050505] selection:bg-[#00f0ff] selection:text-black overflow-x-hidden antialiased text-white cursor-none">
+    <div className="relative min-h-[100svh] font-sans bg-[#050505] selection:bg-[#00f0ff] selection:text-black overflow-x-hidden antialiased text-white cursor-none">
 
       {/* Persistent Fluid Background */}
-      <div className="fixed inset-0 z-0 opacity-40">
+      <div className="fixed inset-0 z-0 hidden opacity-40 md:block">
         <WebGLBackground />
       </div>
 
@@ -57,8 +57,8 @@ export default function LandingPage({ onLoginSuccess }) {
       <nav 
         className={`fixed z-[100] transition-all duration-700 ease-out flex items-center justify-between ${
           isScrolled 
-            ? "top-6 left-6 right-6 md:left-1/2 md:right-auto md:w-[90%] md:-translate-x-1/2 max-w-6xl px-8 py-4 glass-premium-dark rounded-full shadow-2xl" 
-            : "top-0 left-0 w-full px-6 sm:px-12 py-6 bg-transparent shadow-none border-b border-white/5"
+            ? "top-3 left-3 right-3 gap-3 md:top-6 md:left-1/2 md:right-auto md:w-[90%] md:-translate-x-1/2 max-w-6xl px-4 py-3 sm:px-8 sm:py-4 glass-premium-dark rounded-full shadow-2xl" 
+            : "top-0 left-0 w-full gap-3 px-4 py-4 sm:px-12 sm:py-6 bg-transparent shadow-none border-b border-white/5"
         }`}
       >
         <div data-cursor-magnet className="cursor-none" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -75,7 +75,7 @@ export default function LandingPage({ onLoginSuccess }) {
         {/* Action Button */}
         <MagneticButton 
           onClick={() => setIsLoginOpen(true)} 
-          className="cursor-none text-xs tracking-widest uppercase shadow-xl font-bold px-8 py-3.5"
+          className="!hidden sm:!flex sm:!px-8 cursor-none text-xs tracking-widest uppercase shadow-xl font-bold"
           variant="primary"
         >
           Espace Connecté

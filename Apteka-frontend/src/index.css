@@ -31,6 +31,11 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100svh;
 }
 
 /* Glassmorphism utility */
@@ -491,4 +496,11 @@ body {
 /* Le curseur système reste disponible : le curseur animé est décoratif. */
 @media (prefers-reduced-motion: reduce) {
   .jelly-cursor, [data-jelly-cursor] { display: none !important; }
+}
+
+/* Phones use native scrolling and a lighter first paint. This avoids GPU-heavy
+   blur/cursor effects that can leave older Safari and Android Chrome tabs blank. */
+@media (hover: none), (pointer: coarse) {
+  .cursor-none { cursor: auto !important; }
+  .animate-drift-slow, .animate-drift-medium, .animate-drift-fast { animation: none !important; }
 }

@@ -5,13 +5,17 @@ import { motion } from 'framer-motion';
 // SECTION HERO PRINCIPALE — OPTIMISÉE SANS 3D (LUSIVE DECONSTRUCTED)
 // =======================================================================
 export default function HeroSection({ onConnectClick, onHowItWorksClick }) {
+  const disableEntranceAnimation = typeof window !== 'undefined' && (
+    window.innerWidth < 768 || !window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  );
+
   return (
     <section 
-      className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#050505]"
+      className="relative min-h-[100svh] sm:min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#050505]"
     >
       {/* LUMIÈRES D'AMBIANCE (Glow effects) */}
-      <div className="absolute top-[10%] left-[-10%] w-[40vw] h-[40vw] bg-teal-500/15 rounded-full blur-[150px] pointer-events-none animate-pulse-slow" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-emerald-500/10 rounded-full blur-[150px] pointer-events-none" />
+      <div className="absolute top-[10%] left-[-10%] hidden w-[40vw] h-[40vw] bg-teal-500/15 rounded-full blur-[150px] pointer-events-none animate-pulse-slow sm:block" />
+      <div className="absolute bottom-[-10%] right-[-10%] hidden w-[50vw] h-[50vw] bg-emerald-500/10 rounded-full blur-[150px] pointer-events-none sm:block" />
 
       {/* CONTENEUR GRILLE (Séparation Texte / Lecteur Vidéo) */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center mt-20 lg:mt-0">
@@ -21,9 +25,9 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick }) {
           
           {/* Badge */}
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={disableEntranceAnimation ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1 }}
+            transition={{ duration: disableEntranceAnimation ? 0 : 1 }}
             className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8"
           >
             <span className="flex h-2 w-2 relative">
@@ -36,9 +40,9 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick }) {
           {/* Typographie Immersive & Directe */}
           <div className="overflow-hidden mb-2">
             <motion.h1 
-              initial={{ y: "100%", rotate: 2 }}
+              initial={disableEntranceAnimation ? false : { y: "100%", rotate: 2 }}
               animate={{ y: 0, rotate: 0 }}
-              transition={{ duration: 1.2, ease: [0.76, 0, 0.24, 1] }}
+              transition={{ duration: disableEntranceAnimation ? 0 : 1.2, ease: [0.76, 0, 0.24, 1] }}
               className="text-5xl sm:text-6xl md:text-7xl font-black text-transparent bg-clip-text leading-[1.1] tracking-tight"
               style={{
                 backgroundImage: 'linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.5) 100%)',
@@ -51,9 +55,9 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick }) {
           
           <div className="overflow-hidden">
              <motion.h1 
-              initial={{ y: "100%", rotate: -2 }}
+              initial={disableEntranceAnimation ? false : { y: "100%", rotate: -2 }}
               animate={{ y: 0, rotate: 0 }}
-              transition={{ duration: 1.2, delay: 0.1, ease: [0.76, 0, 0.24, 1] }}
+              transition={{ duration: disableEntranceAnimation ? 0 : 1.2, delay: disableEntranceAnimation ? 0 : 0.1, ease: [0.76, 0, 0.24, 1] }}
               className="text-5xl sm:text-6xl md:text-7xl font-black text-transparent bg-clip-text leading-[1.1] tracking-tight flex items-center gap-4"
               style={{
                 backgroundImage: 'linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.5) 100%)',
@@ -65,9 +69,9 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick }) {
           </div>
 
           <motion.p 
-            initial={{ opacity: 0, y: 20 }}
+            initial={disableEntranceAnimation ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.5, delay: 0.6 }}
+            transition={{ duration: disableEntranceAnimation ? 0 : 1.5, delay: disableEntranceAnimation ? 0 : 0.6 }}
             className="mt-8 text-zinc-400 max-w-xl text-base sm:text-lg font-normal leading-relaxed drop-shadow-md"
           >
             Fini les ordonnances papier perdues et les ruptures de stock surprises. 
@@ -77,9 +81,9 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick }) {
 
           {/* Boutons d'Action */}
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={disableEntranceAnimation ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.9, ease: "backOut" }}
+            transition={{ duration: disableEntranceAnimation ? 0 : 1, delay: disableEntranceAnimation ? 0 : 0.9, ease: "backOut" }}
             className="mt-10 flex flex-wrap items-center gap-6"
           >
             <button
@@ -97,7 +101,7 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick }) {
         </div>
 
         {/* COLONNE DROITE : LECTEUR VIDÉO DE PRÉSENTATION ULTRA-PREMIUM */}
-        <div className="col-span-1 lg:col-span-5 h-[45vh] lg:h-[60vh] w-full relative flex items-center justify-center">
+        <div className="col-span-1 lg:col-span-5 hidden h-[45vh] lg:h-[60vh] w-full relative lg:flex items-center justify-center">
           {/* Halo lumineux arrière */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-gradient-to-tr from-teal-500/20 to-sky-500/20 rounded-full blur-[100px] pointer-events-none animate-pulse" />
           
@@ -119,6 +123,7 @@ export default function HeroSection({ onConnectClick, onHowItWorksClick }) {
                 loop
                 muted
                 playsInline
+                preload="metadata"
                 className="w-full h-full object-cover scale-100 group-hover:scale-[1.02] transition-transform duration-[2s] ease-out"
               >
                 <source src="/videos/presentation.mp4" type="video/mp4" />
