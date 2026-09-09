@@ -14,6 +14,9 @@ node_modules/
 Apteka-backend/node_modules/
 Apteka-frontend/node_modules/
 
+# Application Expo gérée dans son dépôt Git indépendant
+/Mobile/
+
 # Répertoires de build
 dist/
 Apteka-frontend/dist/
