@@ -1,5 +1,5 @@
 const { randomUUID } = require('node:crypto');
-const { createCareWorkflows, WorkflowError } = require('./careWorkflows');
+const { createCareWorkflows, WorkflowError, minorUnits } = require('./careWorkflows');
 
 function createCheckoutWorkflows(db, stripe, env = process.env) {
   const care = createCareWorkflows(db);
@@ -21,8 +21,8 @@ function createCheckoutWorkflows(db, stripe, env = process.env) {
         session = await stripe.checkout.sessions.create({
           payment_method_types: ['card'], mode: 'payment',
           line_items: commande.items.map(item => ({
-            price_data: { currency: 'eur', product_data: { name: item.medicament.nom },
-              unit_amount: Math.round(item.medicament.prix * 100) }, quantity: item.qty
+            price_data: { currency: commande.currency.toLowerCase(), product_data: { name: item.medicament.nom },
+              unit_amount: minorUnits(item.medicament.prix, commande.currency) }, quantity: item.qty
           })),
           success_url: frontendUrl + '/?payment=success&commande_id=' + commande.id + '&session_id={CHECKOUT_SESSION_ID}',
           cancel_url: frontendUrl + '/?payment=cancel&commande_id=' + commande.id,

@@ -68,7 +68,8 @@ test('ordinary purchase rejects unreviewed, inactive and prescription-only produ
   }
   const order = await care.order('patient', { pharmacieId: 'pharmacy', total: 0.01,
     items: [{ medicamentId: 'otc', qty: 2, medicament: { prix: 0.01 } }] }, 'RESERVEE');
-  assert.equal(order.total, 4);
+  assert.equal(order.total, 4000);
+  assert.equal(order.currency, 'MGA');
   assert.equal(order.status, 'RESERVEE');
 });
 
@@ -116,13 +117,24 @@ test('payment session must match order, patient, stored session, currency and ex
   const { db, care } = fixture();
   const cmd = await care.order('patient', { pharmacieId: 'pharmacy', items: [{ medicamentId: 'otc', qty: 2 }] }, 'EN_ATTENTE_DE_PAIEMENT');
   await db.commande.update({ where: { id: cmd.id }, data: { stripeSessionId: 'session-test' } });
-  const session = { id: 'session-test', payment_status: 'paid', amount_total: 400, currency: 'eur', metadata: { commandeId: cmd.id, patientId: 'patient' } };
+  const session = { id: 'session-test', payment_status: 'paid', amount_total: 4000, currency: 'mga', metadata: { commandeId: cmd.id, patientId: 'patient' } };
   for (const wrong of [{ amount_total: 1 }, { id: 'different-session' }, { metadata: { commandeId: 'other-order', patientId: 'patient' } }, { currency: 'usd' }]) {
     await denied(() => care.confirmPayment('patient', cmd.id, { ...session, ...wrong }), 409);
   }
   await care.confirmPayment('patient', cmd.id, session);
   await care.confirmPayment('patient', cmd.id, session);
   assert.equal((await db.stock.findUnique({ where: { id: 's-otc' } })).quantite, 8);
+});
+
+test('historical EUR payment verification preserves its two-decimal minor units', async () => {
+  const { db, care } = fixture();
+  const cmd = await db.commande.create({ data: {
+    patientId: 'patient', pharmacieId: 'pharmacy', items: [{ medicamentId: 'otc', qty: 1 }],
+    total: 2.5, currency: 'EUR', status: 'EN_ATTENTE_DE_PAIEMENT', stockReserved: true, stripeSessionId: 'legacy-eur'
+  } });
+  const session = { id: 'legacy-eur', payment_status: 'paid', amount_total: 250, currency: 'eur', metadata: { commandeId: cmd.id, patientId: 'patient' } };
+  await care.confirmPayment('patient', cmd.id, session);
+  assert.equal((await db.commande.findUnique({ where: { id: cmd.id } })).currency, 'EUR');
 });
 
 test('explicit expiry blocks ordering and dispensing; no arbitrary global validity is imposed', async () => {

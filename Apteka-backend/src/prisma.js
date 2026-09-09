@@ -29,7 +29,7 @@ const medicamentsData = JSON.parse(fs.readFileSync(path.join(__dirname, '../data
 
 const mockMedicaments = medicamentsData.map((med, idx) => ({
   id: `med-${idx + 1}`, cis: med.cis, nom: med.nom, forme: med.forme, presentation: med.presentation || "",
-  prix: med.prix_euros ? parseFloat(med.prix_euros.replace(',', '.')) : 5.5, tauxRemboursement: med.taux_remboursement || "30%",
+  prix: med.prix_euros ? Math.round((Number(med.prix_euros.replace(',', '.')) * 4951.08) / 100) * 100 : 10000, currency: 'MGA', tauxRemboursement: med.taux_remboursement || "30%",
   substanceActive: med.substances_actives?.[0]?.substance || "Aucune", categorie: med.categorie || "Général", isPopular: med.isPopular || false,
   isActive: true, requiresPrescription: true, classificationReviewed: false
 }));

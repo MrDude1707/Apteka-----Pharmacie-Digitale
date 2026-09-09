@@ -40,7 +40,11 @@ test('real session is closed before inventory is released when session persisten
   };
   let closed = false;
   const stripe = { checkout: { sessions: {
-    create: async () => ({ id: 'cs_synthetic', url: 'https://checkout.example' }),
+    create: async payload => {
+      assert.equal(payload.line_items[0].price_data.currency, 'mga');
+      assert.equal(payload.line_items[0].price_data.unit_amount, 2000);
+      return { id: 'cs_synthetic', url: 'https://checkout.example' };
+    },
     expire: async id => { assert.equal(id, 'cs_synthetic'); assert.equal((await stock(db)).quantite, 8); closed = true; return { status: 'expired', payment_status: 'unpaid' }; }
   } } };
   await assert.rejects(createCheckoutWorkflows(db, stripe, config).create('patient', cart), e => e.status === 502);
@@ -73,7 +77,7 @@ test('explicit development payment simulation stores an exact bound session', as
 
 test('legacy orders cannot create phantom inventory during cancellation', async () => {
   const { db, care } = fixture();
-  const cmd = await db.commande.create({ data: { patientId: 'patient', pharmacieId: 'pharmacy', items: cart.items, total: 4 } });
+  const cmd = await db.commande.create({ data: { patientId: 'patient', pharmacieId: 'pharmacy', items: cart.items, total: 4000 } });
   await assert.rejects(care.cancelOrder('patient', cmd.id), e => e.status === 409);
   assert.equal((await stock(db)).quantite, 10);
 });

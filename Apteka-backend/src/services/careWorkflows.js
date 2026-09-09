@@ -13,6 +13,7 @@ const jsonItems = value => {
   } catch { fail(400, 'La liste des médicaments est invalide.'); }
 };
 const expired = ord => !!ord.dateExpiration && new Date(ord.dateExpiration) <= new Date();
+const minorUnits = (amount, currency = 'MGA') => currency.toUpperCase() === 'MGA' ? Math.round(amount) : Math.round(amount * 100);
 
 function createCareWorkflows(db) {
   async function transaction(work) {
@@ -157,7 +158,8 @@ function createCareWorkflows(db) {
         }
       }
       const items = [];
-      let cents = 0;
+      let total = 0;
+      let orderCurrency = null;
       for (const [medicamentId, qty] of quantities) {
         if (qty > 10000) fail(400, 'Quantité trop élevée.');
         const medicine = await tx.medicament.findUnique({ where: { id: medicamentId } });
@@ -165,14 +167,18 @@ function createCareWorkflows(db) {
         if (!medicine.classificationReviewed) fail(409, 'Le régime de délivrance de ce produit doit être vérifié avant commande.');
         if (medicine.requiresPrescription && !ord) fail(403, 'Une ordonnance personnelle valide est obligatoire pour ce produit.');
         if (!Number.isFinite(medicine.prix) || medicine.prix <= 0) fail(409, 'Prix indisponible pour ce médicament.');
-        const unitCents = Math.round(medicine.prix * 100);
-        cents += unitCents * qty;
+        const currency = String(medicine.currency || 'EUR').toUpperCase();
+        if (!['EUR', 'MGA'].includes(currency)) fail(409, 'Devise non prise en charge pour ce médicament.');
+        if (orderCurrency && orderCurrency !== currency) fail(409, 'Les médicaments de devises différentes ne peuvent pas être mélangés.');
+        orderCurrency = currency;
+        const unitPrice = currency === 'MGA' ? Math.round(medicine.prix) : Math.round(medicine.prix * 100) / 100;
+        total += unitPrice * qty;
         const stock = await tx.stock.findFirst({ where: { pharmacieId: pharmacy.id, medicamentId } });
         if (!stock || stock.quantite < qty) fail(409, 'Stock insuffisant pour ' + medicine.nom + '.');
         const changed = await tx.stock.updateMany({ where: { id: stock.id, quantite: { gte: qty } }, data: { quantite: { decrement: qty } } });
         if (changed.count !== 1) fail(409, 'Le stock vient de changer. Actualisez votre panier.');
         items.push({ medicamentId, pharmacieId: pharmacy.id, qty,
-          medicament: { id: medicine.id, nom: medicine.nom, prix: unitCents / 100 },
+          medicament: { id: medicine.id, nom: medicine.nom, prix: unitPrice, currency },
           pharmacie: { id: pharmacy.id, name: pharmacy.name } });
       }
       if (ord) {
@@ -180,7 +186,8 @@ function createCareWorkflows(db) {
         if (claimed.count !== 1) fail(409, 'Cette ordonnance vient de changer.');
       }
       return tx.commande.create({ data: { patientId, pharmacieId: pharmacy.id, items,
-        total: cents / 100, status, stockReserved: true, ordonnanceId: ord?.id || null } });
+        total: orderCurrency === 'MGA' ? Math.round(total) : Math.round(total * 100) / 100,
+        currency: orderCurrency, status, stockReserved: true, ordonnanceId: ord?.id || null } });
     });
   }
 
@@ -190,7 +197,8 @@ function createCareWorkflows(db) {
       if (!cmd || cmd.patientId !== patientId) fail(404, 'Commande introuvable.');
       if (cmd.stripeSessionId !== session.id || session.metadata?.commandeId !== cmd.id
         || session.metadata?.patientId !== patientId || session.payment_status !== 'paid'
-        || session.currency !== 'eur' || session.amount_total !== Math.round(cmd.total * 100)) {
+        || session.currency !== (cmd.currency || 'MGA').toLowerCase()
+        || session.amount_total !== minorUnits(cmd.total, cmd.currency || 'MGA')) {
         fail(409, 'Le paiement ne correspond pas à cette commande.');
       }
       if (['PAYEE', 'EN_ROUTE', 'LIVREE'].includes(cmd.status)) return cmd;
@@ -250,4 +258,4 @@ function respondError(res, error) {
   console.error('Workflow failed:', error.code || error.name);
   return res.status(500).json({ error: 'L’opération n’a pas pu être enregistrée.' });
 }
-module.exports = { createCareWorkflows, WorkflowError, respondError, expired, jsonItems };
+module.exports = { createCareWorkflows, WorkflowError, respondError, expired, jsonItems, minorUnits };

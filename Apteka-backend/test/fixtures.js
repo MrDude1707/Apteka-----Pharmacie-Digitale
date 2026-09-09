@@ -15,10 +15,10 @@ function fixture() {
     medecinDisponible: [{ id: 'card', userId: 'doctor', actif: true }, { id: 'card2', userId: 'doctor2', actif: true }],
     pharmacie: [{ id: 'pharmacy', name: 'Officine Test' }, { id: 'pharmacy2', name: 'Autre officine' }],
     medicament: [
-      { id: 'rx', cis: '1', nom: 'Produit test sur ordonnance', prix: 12.50, forme: 'Test', requiresPrescription: true, classificationReviewed: true, isActive: true },
-      { id: 'otc', cis: '2', nom: 'Produit test libre', prix: 2, forme: 'Test', requiresPrescription: false, classificationReviewed: true, isActive: true },
-      { id: 'unreviewed', cis: '3', nom: 'Produit test non vérifié', prix: 2, requiresPrescription: true, classificationReviewed: false, isActive: true },
-      { id: 'inactive', cis: '4', nom: 'Produit test retiré', prix: 2, requiresPrescription: false, classificationReviewed: true, isActive: false }
+      { id: 'rx', cis: '1', nom: 'Produit test sur ordonnance', prix: 12500, currency: 'MGA', forme: 'Test', requiresPrescription: true, classificationReviewed: true, isActive: true },
+      { id: 'otc', cis: '2', nom: 'Produit test libre', prix: 2000, currency: 'MGA', forme: 'Test', requiresPrescription: false, classificationReviewed: true, isActive: true },
+      { id: 'unreviewed', cis: '3', nom: 'Produit test non vérifié', prix: 2000, currency: 'MGA', requiresPrescription: true, classificationReviewed: false, isActive: true },
+      { id: 'inactive', cis: '4', nom: 'Produit test retiré', prix: 2000, currency: 'MGA', requiresPrescription: false, classificationReviewed: true, isActive: false }
     ],
     stock: ['rx', 'otc', 'unreviewed', 'inactive'].map(medicamentId => ({ id: 's-' + medicamentId, pharmacieId: 'pharmacy', medicamentId, quantite: 10 }))
   });

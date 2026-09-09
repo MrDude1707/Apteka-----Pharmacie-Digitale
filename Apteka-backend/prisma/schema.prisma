@@ -113,6 +113,7 @@ model Medicament {
   forme             String
   presentation      String?
   prix              Float?
+  currency          String   @default("MGA")
   tauxRemboursement String?
   substanceActive   String?
   categorie         String?
@@ -207,6 +208,7 @@ model Commande {
   total       Float
   items       Json
   status      String    @default("RESERVEE")
+  currency    String    @default("MGA")
   createdAt   DateTime  @default(now())
   ordonnanceId String? @unique
   ordonnance   Ordonnance? @relation(fields: [ordonnanceId], references: [id])

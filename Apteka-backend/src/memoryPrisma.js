@@ -73,12 +73,12 @@ function createMemoryPrisma(seed = {}) {
     }
   }
   const defaults = model => ({
-    ...(model === 'medicament' ? { isActive: true, requiresPrescription: true, classificationReviewed: false } : {}),
+    ...(model === 'medicament' ? { isActive: true, requiresPrescription: true, classificationReviewed: false, currency: 'MGA' } : {}),
     ...(model === 'medecinDisponible' ? { actif: true } : {}),
     ...(model === 'ordonnance' ? { status: 'PENDING', renewable: false, dateEmission: new Date(), dateDelivrance: null, dateExpiration: null } : {}),
     ...(model === 'renewalRequest' ? { status: 'EN_ATTENTE', requestedAt: new Date(), decidedAt: null } : {}),
     ...(model === 'stock' ? { quantite: 0 } : {}),
-    ...(model === 'commande' ? { status: 'RESERVEE', stockReserved: false } : {}),
+    ...(model === 'commande' ? { status: 'RESERVEE', stockReserved: false, currency: 'MGA' } : {}),
     id: randomUUID(), createdAt: new Date(), updatedAt: new Date()
   });
   const client = { isFallback: true };

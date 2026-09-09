@@ -1,5 +1,5 @@
 const prisma = require('../prisma');
-const { createCareWorkflows, respondError, expired } = require('../services/careWorkflows');
+const { createCareWorkflows, respondError, expired, minorUnits } = require('../services/careWorkflows');
 const { createCheckoutWorkflows } = require('../services/checkoutWorkflows');
 const care = createCareWorkflows(prisma);
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || 'sk_test_unconfigured');
@@ -199,7 +199,7 @@ async function verifyCheckoutSession(req, res) {
     if (commande.stripeSessionId !== sessionId) return res.status(409).json({ error: 'Session étrangère à cette commande.' });
     let session;
     if (sessionId.startsWith('mock_') && process.env.NODE_ENV !== 'production' && process.env.DEMO_PAYMENTS === 'true') {
-      session = { id: sessionId, payment_status: 'paid', currency: 'eur', amount_total: Math.round(commande.total * 100),
+      session = { id: sessionId, payment_status: 'paid', currency: (commande.currency || 'MGA').toLowerCase(), amount_total: minorUnits(commande.total, commande.currency || 'MGA'),
         metadata: { commandeId, patientId: req.user.id } };
     } else {
       session = await stripe.checkout.sessions.retrieve(sessionId);
